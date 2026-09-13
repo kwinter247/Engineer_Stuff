@@ -94,24 +94,19 @@
   }
   .scene svg { display: block; width: 100%; height: auto; }
 
+  /* result strip: sits under the photo so the animation is never covered */
   .verdict {
-    position: absolute;
-    left: 50%; top: 22px;
-    transform: translate(-50%, -12px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .25s ease, transform .25s ease;
+    display: none;
     padding: 10px 18px 11px;
-    border-radius: 4px;
     color: #fff;
     font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
     font-weight: 800;
     font-size: 24px;
     letter-spacing: .04em;
     text-transform: uppercase;
-    box-shadow: 0 8px 24px var(--shadow);
     white-space: nowrap;
-    max-width: calc(100% - 32px);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .verdict small {
     display: block;
@@ -123,17 +118,17 @@
     opacity: .92;
     white-space: normal;
   }
-  .scene.verdict-bottom .verdict { top: auto; bottom: 22px; }
-  .verdict.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .verdict.show { display: block; animation: rise .25s ease; }
   .verdict.bad { background: var(--bad); }
   .verdict.good { background: var(--good); }
-  .verdict.shake { animation: shake .45s ease; }
+  .verdict.shake { animation: rise .25s ease, shake .45s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
   @keyframes shake {
-    0%, 100% { transform: translate(-50%, 0); }
-    20% { transform: translate(calc(-50% - 8px), 0); }
-    40% { transform: translate(calc(-50% + 8px), 0); }
-    60% { transform: translate(calc(-50% - 5px), 0); }
-    80% { transform: translate(calc(-50% + 5px), 0); }
+    0%, 100% { transform: none; }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
   }
 
   /* water: each line group carries --dur (fill time) */
@@ -639,7 +634,7 @@
     });
     svg.innerHTML = defs + body;
     scene.querySelector('svg')?.remove();
-    scene.append(svg);
+    scene.insertBefore(svg, verdict);
     lineGroups = s.lines.map((_, i) => svg.querySelector('#line-' + i));
     // prime the water so it fills along the hose; fill time scales with hose length
     lineGroups.forEach(g => {
@@ -803,7 +798,6 @@
     solved = current.lines.map(solve);
     tabsEl.querySelectorAll('.tab').forEach((t, j) => t.setAttribute('aria-selected', String(j === i)));
     layout.classList.toggle('multi', current.lines.length > 1);
-    scene.classList.toggle('verdict-bottom', current.verdict === 'bottom');
     buildScene(current);
     buildPanel(current);
     reset();
