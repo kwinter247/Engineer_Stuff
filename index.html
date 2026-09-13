@@ -258,6 +258,14 @@
   .reset { background: transparent; color: var(--panel-muted); border-color: #3A414D; font-size: 17px; padding: 8px 16px; }
   .reset:hover { color: var(--panel-text); border-color: var(--panel-muted); }
   .teach { background: transparent; color: var(--water); border-color: rgba(93,183,240,.45); font-size: 17px; padding: 8px 16px; }
+  .next {
+    background: var(--navy); color: #fff; border-color: #2B4A78; width: 100%;
+    justify-content: space-between; text-align: left; padding: 11px 16px;
+    border-top: 1px solid var(--panel-edge); margin-top: 2px;
+  }
+  .next:hover { background: #274571; }
+  .next small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 0; text-transform: none; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .next .arrow { font-family: "Barlow", sans-serif; font-size: 22px; line-height: 1; }
   .teach:hover { background: rgba(93,183,240,.12); border-color: var(--water); }
   .work h3 .tag { font-size: 11px; letter-spacing: .1em; color: var(--water); margin-left: 8px; }
   kbd {
@@ -330,6 +338,8 @@
       </div>
 
       <div class="work" id="work"></div>
+
+      <button type="button" class="next" id="next"></button>
     </section>
   </div>
 
@@ -824,6 +834,10 @@
     layout.classList.toggle('multi', current.lines.length > 1);
     buildScene(current);
     buildPanel(current);
+    const nextIdx = (i + 1) % SCENARIOS.length;
+    const nxt = SCENARIOS[nextIdx];
+    $('next').innerHTML = `<span>Next evolution<br><small>${esc(nxt.title)} · ${esc(nxt.sub)}</small></span><span class="arrow">→</span>`;
+    $('next').onclick = () => { load(nextIdx); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     reset();
   }
 
