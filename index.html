@@ -192,6 +192,7 @@
     font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 18px; letter-spacing: .06em; text-transform: uppercase;
     color: var(--panel-text);
   }
+  .stack-head > span:first-child { display: grid; }
   .stack-head small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 12.5px; letter-spacing: 0; text-transform: none; color: var(--panel-muted); }
   .stack-head .state { font-size: 12px; letter-spacing: .08em; padding: 2px 7px; border-radius: 3px; color: #fff; }
   .stack-head .state.good { background: var(--good); }
@@ -232,6 +233,10 @@
   .term input.wrong { border-color: var(--bad); box-shadow: 0 0 0 3px rgba(200,57,43,.3); }
 
   .rule { border: 0; border-top: 2px solid var(--panel-muted); margin: 2px 0 0; }
+  .engine { grid-column: 1 / -1; border-top: 2px solid var(--yellow); padding-top: 12px; margin-top: 4px; }
+  .engine .term { grid-template-columns: 18px 1fr 140px; max-width: 520px; }
+  .engine .term label b { color: var(--yellow); font-size: 22px; }
+  .engine .term input { font-size: 26px; color: var(--yellow); }
   .term.total label b { color: var(--water); }
   .term.total .val {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -388,8 +393,11 @@
     const noz = REF.nozzles[line.nozzle];
     const size = REF.hs[line.size];
     const master = size.formula === 'master';
-    const q = noz.gpm / 100;
-    const per100 = master ? supplyFLper100(noz.gpm, size.hs) : handlineFLper100(noz.gpm, line.size);
+    // Two supply lines to the same appliance split the flow; FL is figured for one line at half the gpm
+    const nLines = line.supplyLines || 1;
+    const flowGpm = noz.gpm / nLines;
+    const q = flowGpm / 100;
+    const per100 = master ? supplyFLper100(flowGpm, size.hs) : handlineFLper100(flowGpm, line.size);
     const fl = per100 * line.length / 100;
     const ap = REF.appliances[line.appliance || 'none'].psi;
     const elFt = line.elevationFt || 0;
@@ -399,10 +407,11 @@
       np, fl, ap, el, pdp: np + fl + ap + el,
       steps: [
         `NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`,
+        ...(nLines > 1 ? [`${nLines} × ${size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
         master
-          ? `FL/100′ = Q × (Q − 1) ÷ HS = ${fmt(q)} × ${fmt(q - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${noz.gpm} ÷ 100, HS ${size.hs} for ${size.label})`
-          : `FL/100′ = (${noz.gpm} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
-        `FL = ${fmt(per100)} × ${line.length}′ ÷ 100 = ${fmt(fl)} psi`,
+          ? `FL/100′ = Q × (Q − 1) ÷ HS = ${fmt(q)} × ${fmt(q - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${fmt(flowGpm)} ÷ 100, HS ${size.hs} for ${size.label})`
+          : `FL/100′ = (${fmt(flowGpm)} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
+        `FL = ${fmt(per100)} × ${line.length}′ ÷ 100 = ${fmt(fl)} psi${nLines > 1 ? ' (one line)' : ''}`,
         `AP ${fmt(ap)} psi (${REF.appliances[line.appliance || 'none'].label.toLowerCase()})`,
         `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
         `PDP = ${np} + ${fmt(fl)} + ${fmt(ap)} ${el < 0 ? '−' : '+'} ${fmt(Math.abs(el))} = ${fmt(np + fl + ap + el)} psi`,
@@ -467,7 +476,8 @@
   const $ = id => document.getElementById(id);
   const tabsEl = $('tabs'), layout = $('layout'), scene = $('scene'), verdict = $('verdict');
   const calc = $('calc'), hint = $('hint'), work = $('work'), panelSub = $('panel-sub');
-  let current = null, solved = [], lineEls = [], lineGroups = [];
+  let current = null, solved = [], lineEls = [], lineGroups = [], engineEl = null;
+  const enginePDP = () => Math.max(...solved.map(x => x.pdp));
 
   function fmt(n) { return Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toString(); }
   // Rounded answers (22.5 entered as 22 or 23) are accepted: within half a psi
@@ -586,6 +596,18 @@
         state: stack.querySelector('#state-' + i),
       };
     });
+    engineEl = null;
+    if (s.lines.length > 1) {
+      const eng = document.createElement('div');
+      eng.className = 'engine';
+      eng.innerHTML = `<div class="term total">
+          <span class="op" aria-hidden="true">→</span>
+          <label for="pdp-engine"><b>Engine PDP</b><small>Pump to the highest line; gate the rest down</small></label>
+          <input id="pdp-engine" data-line="engine" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
+        </div>`;
+      calc.append(eng);
+      engineEl = eng.querySelector('#pdp-engine');
+    }
     calc.querySelectorAll('input').forEach(inp => inp.addEventListener('input', onInput));
     const single = s.lines.length === 1;
     $('charge').innerHTML = (single ? 'Charge the line' : 'Charge the lines') + ' <kbd>Enter</kbd>';
@@ -603,6 +625,7 @@
   }
   function onInput(e) {
     e.target.classList.remove('wrong');
+    if (e.target.dataset.line === 'engine') { hideVerdict(); work.classList.remove('show'); return; }
     const i = Number(e.target.dataset.line);
     if (lineGroups[i].classList.contains('charged')) { lineGroups[i].classList.remove('charged'); setState(i, null); hideVerdict(); work.classList.remove('show'); }
     refresh();
@@ -626,6 +649,7 @@
     calc.querySelectorAll('input').forEach(inp => inp.classList.remove('wrong'));
     const missing = [];
     lineEls.forEach((le, i) => TERMS.forEach(t => { if (read(i, t.key) === null) { missing.push(le.inputs[t.key]); } }));
+    if (engineEl && engineEl.value.trim() === '') missing.push(engineEl);
     if (missing.length) {
       missing.forEach(inp => inp.classList.add('wrong'));
       hint.textContent = 'Every value is needed. Enter 0 where there is none.';
@@ -639,20 +663,41 @@
       return ok;
     });
     const single = current.lines.length === 1;
-    if (results.every(Boolean)) {
-      const totals = current.lines.map((l, i) => single ? `PDP ${fmt(solved[i].pdp)} psi` : `${l.name} ${fmt(solved[i].pdp)} psi`).join(' · ');
-      showVerdict('good', 'Correct — ' + totals, single ? 'Line charged. Water is flowing.' : 'Both lines charged. Water is flowing.');
+    const engineOk = !engineEl || near(Number(engineEl.value), enginePDP());
+    if (engineEl && !engineOk) engineEl.classList.add('wrong');
+    if (results.every(Boolean) && engineOk) {
+      const totals = single
+        ? `PDP ${fmt(solved[0].pdp)} psi`
+        : `Engine PDP ${fmt(enginePDP())} psi`;
+      const detail = single
+        ? 'Line charged. Water is flowing.'
+        : current.lines.map((l, i) => `${l.name} ${fmt(solved[i].pdp)}`).join(' · ') + '. All lines charged; the lower ones gate down.';
+      showVerdict('good', 'Correct — ' + totals, detail);
       hint.textContent = 'Nice work. The math is shown below.';
       showWork();
     } else {
       const bad = current.lines.filter((l, i) => !results[i]).map(l => l.name);
-      showVerdict('bad', 'Incorrect', single ? 'Rework your values and try again.' : `${bad.join(' and ')} ${bad.length > 1 ? 'are' : 'is'} wrong. Rework and charge again.`);
-      hint.textContent = single ? 'That is not the pump discharge pressure for this line.' : 'Correct lines stay charged. Fix the rest and press Enter.';
+      if (!engineOk && bad.length === 0) {
+        showVerdict('bad', 'Incorrect', 'The lines are right, but the engine PDP is not.');
+        hint.textContent = 'The engine pumps to the highest line. The others are gated down.';
+      } else {
+        showVerdict('bad', 'Incorrect', single ? 'Rework your values and try again.' : `${bad.join(' and ')} ${bad.length > 1 ? 'are' : 'is'} wrong. Rework and charge again.`);
+        hint.textContent = single ? 'That is not the pump discharge pressure for this line.' : 'Correct lines stay charged. Fix the rest and press Enter.';
+      }
       work.classList.remove('show');
     }
   }
   function showWork() {
-    work.innerHTML = current.lines.map((l, i) => `<div><h3>${esc(l.name)} · worked</h3><ol>${solved[i].steps.map(s => '<li>' + esc(s).replace(/^(\w+)/, '<b>$1</b>') + '</li>').join('')}</ol></div>`).join('');
+    let html = current.lines.map((l, i) => `<div><h3>${esc(l.name)} · worked</h3><ol>${solved[i].steps.map(s => '<li>' + esc(s).replace(/^(\w+)/, '<b>$1</b>') + '</li>').join('')}</ol></div>`).join('');
+    if (current.lines.length > 1) {
+      const top = enginePDP();
+      const gated = current.lines.filter((l, i) => solved[i].pdp < top).map((l) => l.name);
+      html += `<div><h3>Engine · worked</h3><ol>
+        <li><b>PDP</b> = highest line = ${fmt(top)} psi</li>
+        ${gated.length ? `<li>${esc(gated.join(' and '))} gated down at the discharge</li>` : ''}
+      </ol></div>`;
+    }
+    work.innerHTML = html;
     work.classList.add('show');
   }
 
@@ -688,7 +733,9 @@
         <h3 style="margin-top:14px">Rule of Eights, stack tips</h3><table>${tips}</table><p>Tip size in eighths, plus 2 on the top number, gives the hundreds of gpm.</p></div>
       <div><h3>Friction loss, handline</h3><p class="eq">FL/100′ = (GPM × HS) ÷ 10 − 10</p><table>${hs}</table>
         <h3 style="margin-top:14px">Friction loss, master stream / supply</h3><p class="eq">FL/100′ = Q × (Q − 1) ÷ HS</p><p>Q = gpm ÷ 100. HS = 4 for 4″ supply line.</p></div>
-      <div><h3>Elevation</h3><p class="eq">EL = height (ft) × 0.5 psi</p><p>Half the elevation in feet. Add it for a nozzle above the pump, subtract it below.</p>
+      <div><h3>Two supply lines</h3><p>Two lines from the engine to the same appliance split the flow. Figure FL for one line at half the gpm, and add it once.</p>
+        <h3 style="margin-top:14px">More than one line flowing</h3><p>The engine's PDP is the highest line's pressure. Every lower line is gated down at its discharge.</p>
+        <h3 style="margin-top:14px">Elevation</h3><p class="eq">EL = height (ft) × 0.5 psi</p><p>Half the elevation in feet. Add it for a nozzle above the pump, subtract it below.</p>
         <h3 style="margin-top:14px">Appliance loss</h3><table>${ap}</table></div>`;
   }
 

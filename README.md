@@ -23,6 +23,8 @@ The user enters every value for each line. The app totals the PDP live. Pressing
 | 3 · Line 2 | 200′ 1¾″ smooth bore | 50 | 76 | 0 | 0 | **126** |
 | 4 | E159 supplying Ladder 152 through 450′ of 4″, 1⅜″ stack tip 100′ up | 80 | 22.5 | 40 | 50 | **192.5** |
 
+On a multi-line evolution the app also asks for the **Engine PDP**, which must be the highest line's pressure (evolution 3: 126). The lower lines are gated down at their discharges.
+
 Friction loss for a 1¾″ smooth bore handline at 160 gpm: (160 × 3) ÷ 10 − 10 = 38 psi per 100′.
 
 Friction loss for 4″ supply at 500 gpm: Q = 5, so 5 × 4 ÷ 4 = 5 psi per 100′, and 22.5 psi for 450′. Entered values within half a psi of the exact answer are accepted, so 22 or 23 for FL and 192 or 193 for PDP all grade as correct.
@@ -36,6 +38,8 @@ Encoded in the `REF` object in `index.html`, from the Glendale hydraulics sheet:
 - Handline friction loss: FL/100′ = (GPM × HS) ÷ 10 − 10, with HS = 3 for 1¾″ and 1 for 2½″.
 - Master stream / supply line friction loss: FL/100′ = Q × (Q − 1) ÷ HS, Q = gpm ÷ 100, HS = 4 for 4″. A line with `size: '4'` uses this formula automatically.
 - Elevation: EL = feet of elevation × 0.5 psi, added above the pump and subtracted below.
+- Two supply lines to the same appliance (`supplyLines: 2` on a line) split the flow: FL is figured for one line at half the gpm and added once.
+- More than one line flowing: the engine's PDP is the highest line's PDP; the rest gate down.
 - Appliance losses: gated wye 10, ladder 40, Stang gun 25, pump to pump 20; foam eductor operates at 200 psi.
 
 The answers are computed from these tables, not hard-coded, so adding a line with a different length, hose size, nozzle or appliance only needs a new entry in `SCENARIOS`.
