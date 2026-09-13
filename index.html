@@ -402,18 +402,25 @@
     const ap = REF.appliances[line.appliance || 'none'].psi;
     const elFt = line.elevationFt || 0;
     const el = elFt * REF.elevation.psiPerFoot;
-    const np = noz.np;
+    // Relay: the next engine is in service, so this pump only feeds its intake. No nozzle pressure,
+    // FL on the line between the engines at the downstream flow, plus pump-to-pump. Nothing past that engine counts.
+    const np = line.relay ? 0 : noz.np;
     return {
       np, fl, ap, el, pdp: np + fl + ap + el,
       steps: [
-        `NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`,
+        ...(line.relay
+          ? [`NP 0 psi: ${line.relay} is in service, so this pump only feeds ${line.relay}'s intake. Everything past ${line.relay} is ${line.relay}'s to pump.`,
+             `GPM comes from what the ladder is flowing: ${noz.label}, ${noz.gpm} gpm.`]
+          : [`NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`]),
         ...(nLines > 1 ? [`${nLines} × ${size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
         master
           ? `FL/100′ = Q × (Q − 1) ÷ HS = ${fmt(q)} × ${fmt(q - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${fmt(flowGpm)} ÷ 100, HS ${size.hs} for ${size.label})`
           : `FL/100′ = (${fmt(flowGpm)} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
         `FL = ${fmt(per100)} × ${line.length}′ ÷ 100 = ${fmt(fl)} psi${nLines > 1 ? ' (one line)' : ''}`,
         `AP ${fmt(ap)} psi (${REF.appliances[line.appliance || 'none'].label.toLowerCase()})`,
-        `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
+        line.relay && !elFt
+          ? `EL 0 psi: ${line.relay} sits at grade. The ladder's elevation is ${line.relay}'s to pump.`
+          : `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
         `PDP = ${np} + ${fmt(fl)} + ${fmt(ap)} ${el < 0 ? '−' : '+'} ${fmt(Math.abs(el))} = ${fmt(np + fl + ap + el)} psi`,
       ],
     };
@@ -458,7 +465,17 @@
         name: 'E159 to L152', length: 450, size: '4', nozzle: 'tip-1375', appliance: 'ladder', elevationFt: 100,
         // 4″ supply from E159's discharge to the ladder's inlet, then the waterway up the ladder to the tip
         path: 'M 1284 628 L 1303 653 L 1323 692 L 1331 716 L 1331 734 L 1322 754 L 1304 771 L 1286 782 L 1250 795 L 1238 794 L 1182 802 L 1169 808 L 1125 808 L 1079 803 L 968 781 L 913 778 L 872 783 L 860 781 L 785 798 L 773 804 L 729 806 L 697 803 L 685 806 L 664 797 L 569 770 L 538 754 L 516 739 L 500 724 L 483 699 L 452 629 L 428 586 L 416 570 M 222 512 L 600 66 L 617 58',
-        tip: [617, 58], stream: 'arc', mask: '0,0 0,0 0,0',
+        tip: [617, 58], stream: 'arc', arc: { c: [290, 20], end: [623, 329] }, mask: '0,0 0,0 0,0',
+      }],
+    },
+    {
+      id: 'e5', title: 'Evolution 5', sub: 'E151 relaying to E152, 450′ 4″; E152 feeds Ladder 152', image: 'scene-relay.jpg', verdict: 'bottom',
+      lines: [{
+        name: 'E151 to E152', desc: 'relay · 450′ 4″ · ladder flowing a 1½″ tip',
+        length: 450, size: '4', nozzle: 'tip-150', relay: 'E152', appliance: 'pump-to-pump', elevationFt: 0,
+        // 450′ from E151 to E152, then E152's two 200′ lines to the ladder, then the waterway to the tip
+        path: 'M 1536 758 L 1541 753 L 1541 733 L 1536 713 L 1518 689 L 1486 660 L 1455 640 L 1425 627 L 1338 599 L 1295 574 L 1273 555 L 1259 531 L 1253 493 L 1259 490 L 1289 496 M 923 512 L 860 528 L 802 534 L 734 534 L 673 529 L 610 518 L 565 505 L 557 497 M 914 539 L 873 559 L 820 573 L 741 581 L 664 581 L 585 575 L 518 564 L 437 536 L 403 519 M 180 480 L 585 70 L 600 60',
+        tip: [600, 60], stream: 'arc', arc: { c: [254, 40], end: [560, 285] }, mask: '0,0 0,0 0,0',
       }],
     },
   ];
@@ -479,7 +496,7 @@
   let current = null, solved = [], lineEls = [], lineGroups = [], engineEl = null;
   const enginePDP = () => Math.max(...solved.map(x => x.pdp));
 
-  function fmt(n) { return Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toString(); }
+  function fmt(n) { return Number.isInteger(n) ? String(n) : (Math.round(n * 100) / 100).toString(); }
   // Rounded answers (22.5 entered as 22 or 23) are accepted: within half a psi
   const near = (a, b) => Math.abs(a - b) <= 0.5;
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -507,16 +524,16 @@
           <stop offset=".3" stop-color="#BFE4FA" stop-opacity=".85"/>
           <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
         </linearGradient>
-        <linearGradient id="g-arc" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="623" y2="329">
-          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
-          <stop offset=".45" stop-color="#CFEAFB" stop-opacity=".75"/>
-          <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
-        </linearGradient>
         <radialGradient id="g-mist">
           <stop offset="0" stop-color="#FFFFFF" stop-opacity=".7"/><stop offset="1" stop-color="#BFE4FA" stop-opacity="0"/>
         </radialGradient>`;
     s.lines.forEach((l, i) => {
       defs += `<mask id="m-leg-${i}"><rect width="${IMG_W}" height="${IMG_H}" fill="#fff"/><polygon points="${l.mask}" fill="#000"/></mask>`;
+      if (l.arc) defs += `<linearGradient id="g-arc-${i}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${l.arc.end[0]}" y2="${l.arc.end[1]}">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
+          <stop offset=".45" stop-color="#CFEAFB" stop-opacity=".75"/>
+          <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
+        </linearGradient>`;
     });
     defs += '</defs>';
     let body = `<image href="${s.image}" width="${IMG_W}" height="${IMG_H}"/>`;
@@ -527,17 +544,20 @@
           <path class="water core" d="${l.path}" fill="none" stroke="#2C8FD6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
           <path class="water hi" d="${l.path}" fill="none" stroke="#9FDBFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
         </g>
-        ${l.stream === 'arc' ? `
+        ${l.stream === 'arc' ? (() => {
+        const [cx, cy] = l.arc.c, [ex, ey] = l.arc.end;
+        const q = (dx, dy) => `M 0 ${dy} Q ${cx} ${cy + dy} ${ex + dx} ${ey + dy}`;
+        return `
         <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]})">
-          <path d="M 0 0 Q 290 20 623 329" stroke="url(#g-arc)" stroke-width="30" fill="none" stroke-linecap="round" opacity=".5"/>
-          <path d="M 0 0 Q 290 20 623 329" stroke="url(#g-arc)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".9"/>
-          <path class="drop arc" d="M 0 0 Q 290 20 623 329" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>
-          <path class="drop arc d2" d="M 0 -5 Q 290 12 615 322" stroke="#DDF1FD" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
-          <path class="drop arc d3" d="M 0 5 Q 290 30 632 338" stroke="#BFE4FA" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
-          <circle class="mist" cx="540" cy="255" r="55" fill="url(#g-mist)"/>
-          <circle class="mist m2" cx="600" cy="305" r="65" fill="url(#g-mist)"/>
-          <circle class="mist m3" cx="470" cy="200" r="40" fill="url(#g-mist)"/>
-        </g>` : `
+          <path d="${q(0, 0)}" stroke="url(#g-arc-${i})" stroke-width="30" fill="none" stroke-linecap="round" opacity=".5"/>
+          <path d="${q(0, 0)}" stroke="url(#g-arc-${i})" stroke-width="12" fill="none" stroke-linecap="round" opacity=".9"/>
+          <path class="drop arc" d="${q(0, 0)}" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>
+          <path class="drop arc d2" d="${q(-8, -6)}" stroke="#DDF1FD" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+          <path class="drop arc d3" d="${q(8, 7)}" stroke="#BFE4FA" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+          <circle class="mist" cx="${ex * .87}" cy="${ey * .78}" r="${ey * .17}" fill="url(#g-mist)"/>
+          <circle class="mist m2" cx="${ex * .96}" cy="${ey * .93}" r="${ey * .2}" fill="url(#g-mist)"/>
+          <circle class="mist m3" cx="${ex * .75}" cy="${ey * .6}" r="${ey * .12}" fill="url(#g-mist)"/>
+        </g>`; })() : `
         <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]})">
           <path d="M 0 -4 C 60 -22, 140 -48, 225 -70 L 225 42 C 140 22, 60 8, 0 6 Z" fill="url(#g-stream)"/>
           <path class="drop" d="M 4 -1 C 70 -18, 150 -44, 225 -62" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".95"/>
@@ -573,7 +593,7 @@
       const stack = document.createElement('div');
       stack.className = 'stack';
       const sol = solved[i];
-      let html = `<div class="stack-head"><span>${esc(l.name)} <small>${l.length}′ ${REF.hs[l.size].label} · ${esc(REF.nozzles[l.nozzle].short || REF.nozzles[l.nozzle].label)}</small></span><span class="state" id="state-${i}" hidden></span></div>`;
+      let html = `<div class="stack-head"><span>${esc(l.name)} <small>${esc(l.desc || `${l.length}′ ${REF.hs[l.size].label} · ${REF.nozzles[l.nozzle].short || REF.nozzles[l.nozzle].label}`)}</small></span><span class="state" id="state-${i}" hidden></span></div>`;
       TERMS.forEach(t => {
         const id = `${t.key}-${i}`;
         html += `<div class="term">
@@ -733,7 +753,8 @@
         <h3 style="margin-top:14px">Rule of Eights, stack tips</h3><table>${tips}</table><p>Tip size in eighths, plus 2 on the top number, gives the hundreds of gpm.</p></div>
       <div><h3>Friction loss, handline</h3><p class="eq">FL/100′ = (GPM × HS) ÷ 10 − 10</p><table>${hs}</table>
         <h3 style="margin-top:14px">Friction loss, master stream / supply</h3><p class="eq">FL/100′ = Q × (Q − 1) ÷ HS</p><p>Q = gpm ÷ 100. HS = 4 for 4″ supply line.</p></div>
-      <div><h3>Two supply lines</h3><p>Two lines from the engine to the same appliance split the flow. Figure FL for one line at half the gpm, and add it once.</p>
+      <div><h3>Relay pumping</h3><p>When the next engine is in service, pump only to its intake: FL on the line between the engines at the flow the ladder or nozzle is using, plus 20 psi pump to pump. No nozzle pressure, no elevation, and nothing past that engine.</p>
+        <h3 style="margin-top:14px">Two supply lines</h3><p>Two lines from the engine to the same appliance split the flow. Figure FL for one line at half the gpm, and add it once.</p>
         <h3 style="margin-top:14px">More than one line flowing</h3><p>The engine's PDP is the highest line's pressure. Every lower line is gated down at its discharge.</p>
         <h3 style="margin-top:14px">Elevation</h3><p class="eq">EL = height (ft) × 0.5 psi</p><p>Half the elevation in feet. Add it for a nozzle above the pump, subtract it below.</p>
         <h3 style="margin-top:14px">Appliance loss</h3><table>${ap}</table></div>`;
