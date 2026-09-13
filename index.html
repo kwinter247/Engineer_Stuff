@@ -391,14 +391,14 @@
   // Work a line from its layout: NP from the nozzle, FL from the formula, AP from the table, EL as given.
   function solve(line) {
     const noz = REF.nozzles[line.nozzle];
-    const size = REF.hs[line.size];
-    const master = size.formula === 'master';
+    const size = line.noHose ? null : REF.hs[line.size];
+    const master = !!size && size.formula === 'master';
     // Two supply lines to the same appliance split the flow; FL is figured for one line at half the gpm
     const nLines = line.supplyLines || 1;
     const flowGpm = noz.gpm / nLines;
     const q = flowGpm / 100;
-    const per100 = master ? supplyFLper100(flowGpm, size.hs) : handlineFLper100(flowGpm, line.size);
-    const fl = per100 * line.length / 100;
+    const per100 = line.noHose ? 0 : master ? supplyFLper100(flowGpm, size.hs) : handlineFLper100(flowGpm, line.size);
+    const fl = line.noHose ? 0 : per100 * line.length / 100;
     const ap = REF.appliances[line.appliance || 'none'].psi;
     const elFt = line.elevationFt || 0;
     const el = elFt * REF.elevation.psiPerFoot;
@@ -412,11 +412,13 @@
           ? [`NP 0 psi: ${line.relay} is in service, so this pump only feeds ${line.relay}'s intake. Everything past ${line.relay} is ${line.relay}'s to pump.`,
              `GPM comes from what the ladder is flowing: ${noz.label}, ${noz.gpm} gpm.`]
           : [`NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`]),
-        ...(nLines > 1 ? [`${nLines} × ${size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
-        master
-          ? `FL/100′ = Q × (Q − 1) ÷ HS = ${fmt(q)} × ${fmt(q - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${fmt(flowGpm)} ÷ 100, HS ${size.hs} for ${size.label})`
-          : `FL/100′ = (${fmt(flowGpm)} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
-        `FL = ${fmt(per100)} × ${line.length}′ ÷ 100 = ${fmt(fl)} psi${nLines > 1 ? ' (one line)' : ''}`,
+        ...(line.noHose ? [`FL 0 psi: the ${line.name.toLowerCase()} is piped on the engine, no hose.`] : [
+          ...(nLines > 1 ? [`${nLines} × ${size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
+          master
+            ? `FL/100′ = Q × (Q − 1) ÷ HS = ${fmt(q)} × ${fmt(q - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${fmt(flowGpm)} ÷ 100, HS ${size.hs} for ${size.label})`
+            : `FL/100′ = (${fmt(flowGpm)} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
+          `FL = ${fmt(per100)} × ${line.length}′ ÷ 100 = ${fmt(fl)} psi${nLines > 1 ? ' (one line)' : ''}`,
+        ]),
         `AP ${fmt(ap)} psi (${REF.appliances[line.appliance || 'none'].label.toLowerCase()})`,
         line.relay && !elFt
           ? `EL 0 psi: ${line.relay} sits at grade. The ladder's elevation is ${line.relay}'s to pump.`
@@ -476,6 +478,21 @@
         // 450′ from E151 to E152, then E152's two 200′ lines to the ladder, then the waterway to the tip
         path: 'M 1536 758 L 1541 753 L 1541 733 L 1536 713 L 1518 689 L 1486 660 L 1455 640 L 1425 627 L 1338 599 L 1295 574 L 1273 555 L 1259 531 L 1253 493 L 1259 490 L 1289 496 M 923 512 L 860 528 L 802 534 L 734 534 L 673 529 L 610 518 L 565 505 L 557 497 M 914 539 L 873 559 L 820 573 L 741 581 L 664 581 L 585 575 L 518 564 L 437 536 L 403 519 M 180 480 L 585 70 L 600 60',
         tip: [600, 60], stream: 'arc', arc: { c: [254, 40], end: [560, 285] }, mask: '0,0 0,0 0,0',
+      }],
+    },
+    {
+      id: 'e6', title: 'Evolution 6', sub: 'E151 deck gun, 2″ tip, plus 200′ 1¾″ handline', image: 'scene-deckgun.jpg', verdict: 'bottom',
+      lines: [{
+        name: 'Deck gun', desc: '2″ smooth bore tip, piped on the engine',
+        noHose: true, nozzle: 'tip-2', appliance: 'stang-gun', elevationFt: 0,
+        // waterway from the pump panel up to the gun, then the stream
+        path: 'M 555 440 L 590 380 L 630 325 L 680 280 L 705 265',
+        tip: [705, 265], stream: 'arc', arc: { c: [300, -150], end: [700, -40] }, mask: '0,0 0,0 0,0',
+      }, {
+        name: 'Handline', desc: '200′ 1¾″ · smooth bore',
+        length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
+        path: 'M 526 498 L 522 512 L 521 537 L 524 556 L 535 584 L 568 628 L 613 664 L 678 701 L 762 734 L 861 763 L 961 784 L 1074 796 L 1144 799 L 1228 797 L 1304 787 L 1353 776 L 1398 759 L 1452 725 L 1492 688 L 1560 655',
+        tip: [1615, 642], mask: '1470,675 1582,665 1588,800 1480,800',
       }],
     },
   ];
@@ -547,6 +564,8 @@
         ${l.stream === 'arc' ? (() => {
         const [cx, cy] = l.arc.c, [ex, ey] = l.arc.end;
         const q = (dx, dy) => `M 0 ${dy} Q ${cx} ${cy + dy} ${ex + dx} ${ey + dy}`;
+        const at = t => [2 * (1 - t) * t * cx + t * t * ex, 2 * (1 - t) * t * cy + t * t * ey];
+        const L = Math.hypot(ex, ey), [m1x, m1y] = at(.8), [m2x, m2y] = at(.93), [m3x, m3y] = at(.66);
         return `
         <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]})">
           <path d="${q(0, 0)}" stroke="url(#g-arc-${i})" stroke-width="30" fill="none" stroke-linecap="round" opacity=".5"/>
@@ -554,9 +573,9 @@
           <path class="drop arc" d="${q(0, 0)}" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>
           <path class="drop arc d2" d="${q(-8, -6)}" stroke="#DDF1FD" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
           <path class="drop arc d3" d="${q(8, 7)}" stroke="#BFE4FA" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
-          <circle class="mist" cx="${ex * .87}" cy="${ey * .78}" r="${ey * .17}" fill="url(#g-mist)"/>
-          <circle class="mist m2" cx="${ex * .96}" cy="${ey * .93}" r="${ey * .2}" fill="url(#g-mist)"/>
-          <circle class="mist m3" cx="${ex * .75}" cy="${ey * .6}" r="${ey * .12}" fill="url(#g-mist)"/>
+          <circle class="mist" cx="${m1x}" cy="${m1y}" r="${L * .08}" fill="url(#g-mist)"/>
+          <circle class="mist m2" cx="${m2x}" cy="${m2y}" r="${L * .095}" fill="url(#g-mist)"/>
+          <circle class="mist m3" cx="${m3x}" cy="${m3y}" r="${L * .06}" fill="url(#g-mist)"/>
         </g>`; })() : `
         <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]})">
           <path d="M 0 -4 C 60 -22, 140 -48, 225 -70 L 225 42 C 140 22, 60 8, 0 6 Z" fill="url(#g-stream)"/>
@@ -631,7 +650,7 @@
     calc.querySelectorAll('input').forEach(inp => inp.addEventListener('input', onInput));
     const single = s.lines.length === 1;
     $('charge').innerHTML = (single ? 'Charge the line' : 'Charge the lines') + ' <kbd>Enter</kbd>';
-    panelSub.textContent = s.lines.map(l => `${l.name}: ${l.length}′ ${REF.hs[l.size].label}`).join(' · ');
+    panelSub.textContent = s.lines.map(l => `${l.name}: ${l.noHose ? REF.nozzles[l.nozzle].short : `${l.length}′ ${REF.hs[l.size].label}`}`).join(' · ');
   }
 
   function read(i, k) { const v = lineEls[i].inputs[k].value.trim(); return v === '' ? null : Number(v); }
