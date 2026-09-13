@@ -51,7 +51,7 @@
     padding-inline: 16px;
     padding-block: 20px 48px;
   }
-  .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
 
   header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
   h1 {
@@ -69,7 +69,19 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) h1 em { color: var(--yellow); } }
   .sub { color: var(--ink-soft); margin: 0; font-size: 15px; }
 
+  /* evolution tabs */
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tab {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 17px; letter-spacing: .04em; text-transform: uppercase;
+    background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px;
+    padding: 7px 14px; cursor: pointer; display: flex; gap: 8px; align-items: baseline;
+  }
+  .tab small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; text-transform: none; letter-spacing: 0; }
+  .tab[aria-selected="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .tab:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
+
   .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+  .layout.multi { grid-template-columns: 1fr; }
   @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
   /* ---------- scene ---------- */
@@ -123,12 +135,11 @@
     80% { transform: translate(calc(-50% + 5px), 0); }
   }
 
-  /* water: a blue core with a pale highlight, both fill along the hose */
-  #water-core, #water-hi { opacity: 0; }
-  .charged #water-core { opacity: 1; stroke-dashoffset: 0 !important; transition: stroke-dashoffset 2.2s linear, opacity .1s; }
-  .charged #water-hi { opacity: 1; stroke-dashoffset: 0 !important; transition: stroke-dashoffset 2.2s linear, opacity .1s; }
-  #stream { opacity: 0; transition: opacity .5s ease; }
-  .charged #stream { opacity: 1; transition-delay: 2.15s; }
+  /* water: each line group carries --dur (fill time) */
+  .water { opacity: 0; }
+  .line.charged .water { opacity: 1; stroke-dashoffset: 0 !important; transition: stroke-dashoffset var(--dur) linear, opacity .1s; }
+  .stream { opacity: 0; transition: opacity .5s ease; }
+  .line.charged .stream { opacity: 1; transition-delay: calc(var(--dur) - .1s); }
   .drop { stroke-dasharray: 22 34; animation: drop 1s linear infinite; }
   .drop.d2 { animation-duration: .85s; stroke-dasharray: 16 30; }
   .drop.d3 { animation-duration: 1.2s; stroke-dasharray: 28 40; }
@@ -139,7 +150,7 @@
   .mist.m3 { animation-delay: -1.5s; }
   @keyframes mist { 0%, 100% { opacity: .35; transform: scale(.9); } 50% { opacity: .75; transform: scale(1.12); } }
   @media (prefers-reduced-motion: reduce) {
-    .charged #water-core, .charged #water-hi, #stream { transition: none; }
+    .line.charged .water, .stream { transition: none; }
     .drop, .mist { animation: none; }
     .verdict.shake { animation: none; }
   }
@@ -168,7 +179,18 @@
   }
   .formula b { color: var(--panel-text); font-weight: 600; }
 
-  .stack { display: grid; gap: 8px; }
+  .stacks { display: grid; gap: 18px; }
+  .multi .stacks { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .stack { display: grid; gap: 8px; align-content: start; }
+  .stack-head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 18px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--panel-text);
+  }
+  .stack-head small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 12.5px; letter-spacing: 0; text-transform: none; color: var(--panel-muted); }
+  .stack-head .state { font-size: 12px; letter-spacing: .08em; padding: 2px 7px; border-radius: 3px; color: #fff; }
+  .stack-head .state.good { background: var(--good); }
+  .stack-head .state.bad { background: var(--bad); }
   .term {
     display: grid;
     grid-template-columns: 18px 1fr 108px;
@@ -218,6 +240,7 @@
   .term.total .val small { font-size: 12px; color: var(--panel-muted); font-weight: 500; }
 
   .actions { display: grid; gap: 10px; }
+  .multi .actions { grid-template-columns: auto auto 1fr; align-items: center; }
   button {
     font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
     border-radius: 4px; padding: 10px 20px; cursor: pointer; border: 1px solid transparent;
@@ -235,6 +258,35 @@
     padding: 1px 6px; letter-spacing: 0;
   }
   .hint { color: var(--panel-muted); font-size: 13.5px; text-align: center; margin: 0; }
+  .multi .hint { text-align: left; }
+
+  /* worked solution */
+  .work { display: none; border-top: 1px solid var(--panel-edge); padding-top: 12px; gap: 12px; }
+  .work.show { display: grid; }
+  .multi .work.show { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .work h3 { margin: 0 0 6px; font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--panel-muted); }
+  .work ol { margin: 0; padding-left: 18px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; line-height: 1.7; color: var(--panel-text); }
+  .work ol b { color: var(--yellow); font-weight: 600; }
+
+  /* reference drawer */
+  details.ref { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 0 18px; }
+  details.ref summary {
+    cursor: pointer; padding: 12px 0; list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 18px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  details.ref summary::-webkit-details-marker { display: none; }
+  details.ref summary small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
+  details.ref summary::after { content: "Show"; font-size: 13px; letter-spacing: .06em; color: var(--ink-soft); margin-left: auto; }
+  details.ref[open] summary::after { content: "Hide"; }
+  .ref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 28px; padding: 4px 0 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .ref-grid h3 { margin: 0 0 8px; font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--navy); }
+  :root[data-theme="dark"] .ref-grid h3 { color: var(--yellow); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ref-grid h3 { color: var(--yellow); } }
+  .ref-grid table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .ref-grid td { padding: 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .ref-grid td + td { text-align: right; white-space: nowrap; padding-left: 12px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; }
+  .ref-grid .eq { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; margin: 0 0 8px; color: var(--ink); }
+  .ref-grid p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
 
   .notes { color: var(--ink-soft); font-size: 14px; max-width: 65ch; margin: 0; }
   .notes b { color: var(--ink); font-weight: 600; }
@@ -243,43 +295,189 @@
 <div class="wrap">
   <header>
     <h1>Engine 150 <em>Pump Trainer</em></h1>
-    <p class="sub">Work the hydraulics, charge the line. 150′ of 1¾″ to a smooth bore.</p>
+    <p class="sub">Work the hydraulics, charge the line. Glendale Fire Department values.</p>
   </header>
 
-  <div class="layout">
-    <section class="scene" id="scene" aria-label="Aerial photo of Engine 150 at a hydrant with a 150 foot attack line to a firefighter">
+  <div class="tabs" role="tablist" id="tabs"></div>
+
+  <div class="layout" id="layout">
+    <section class="scene" id="scene">
       <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
-      <svg viewBox="0 0 1672 941" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img">
-        <defs>
-          <linearGradient id="g-stream" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
-            <stop offset=".3" stop-color="#BFE4FA" stop-opacity=".85"/>
-            <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
-          </linearGradient>
-          <radialGradient id="g-mist">
-            <stop offset="0" stop-color="#FFFFFF" stop-opacity=".7"/><stop offset="1" stop-color="#BFE4FA" stop-opacity="0"/>
-          </radialGradient>
-          <!-- hide the water where the hose passes behind the firefighter's front leg -->
-          <mask id="m-leg">
-            <rect width="1672" height="941" fill="#fff"/>
-            <polygon points="1318,592 1412,578 1420,650 1400,720 1322,720" fill="#000"/>
-          </mask>
-        </defs>
+    </section>
 
-        <image href="scene.jpg" xlink:href="scene.jpg" width="1672" height="941"/>
+    <section class="panel" aria-labelledby="panel-title">
+      <div class="panel-head">
+        <div class="panel-title" id="panel-title">Pump Discharge Pressure</div>
+        <div class="panel-sub" id="panel-sub"></div>
+        <div class="formula"><b>PDP</b> = NP + FL + AP ± EL</div>
+      </div>
 
-        <!-- water filling the attack line, traced from the hose in the photo -->
-        <g mask="url(#m-leg)">
-          <path id="water-core"
-            d="M 742 392 C 748 415, 758 430, 766 455 C 774 482, 774 505, 786 530 C 800 556, 830 572, 880 585 C 940 601, 995 622, 1040 656 C 1075 682, 1120 692, 1170 690 C 1220 686, 1262 662, 1318 628 C 1358 606, 1395 588, 1425 576"
-            fill="none" stroke="#2C8FD6" stroke-width="10" stroke-linecap="round"/>
-          <path id="water-hi"
-            d="M 742 392 C 748 415, 758 430, 766 455 C 774 482, 774 505, 786 530 C 800 556, 830 572, 880 585 C 940 601, 995 622, 1040 656 C 1075 682, 1120 692, 1170 690 C 1220 686, 1262 662, 1318 628 C 1358 606, 1395 588, 1425 576"
-            fill="none" stroke="#9FDBFF" stroke-width="3.5" stroke-linecap="round"/>
+      <form class="stacks" id="calc" novalidate></form>
+
+      <div class="actions">
+        <button type="button" class="charge" id="charge">Charge the line <kbd>Enter</kbd></button>
+        <button type="button" class="reset" id="reset">Reset</button>
+        <p class="hint" id="hint">Enter all values, then press Enter.</p>
+      </div>
+
+      <div class="work" id="work"></div>
+    </section>
+  </div>
+
+  <details class="ref">
+    <summary>Glendale hydraulics reference <small>nozzle pressures, friction loss, appliances</small></summary>
+    <div class="ref-grid" id="ref"></div>
+  </details>
+
+  <p class="notes"><b>How it grades.</b> Every value is checked against the answer worked from the Glendale sheet, and each line's total must match its pump discharge pressure. A correct line charges and its nozzle flows; a wrong line stays dry until you rework it.</p>
+</div>
+
+<script>
+  // ============================================================
+  // Glendale hydraulics reference (from the department sheet)
+  // ============================================================
+  const REF = {
+    nozzles: {
+      'sb-175':   { label: '1¾″ smooth bore handline', np: 50,  gpm: 160 },
+      'sb-250':   { label: '2½″ smooth bore handline', np: 50,  gpm: 300 },
+      'sb-master':{ label: 'Smooth bore master stream', np: 80,  gpm: 400, gpmMax: 1000 },
+      'fog-master':{ label: 'Fog master stream',        np: 100, gpm: 1000 },
+      'penetrating':{ label: 'Penetrating nozzle',      np: 100, gpm: 95 },
+      'blitz-fog-low':  { label: 'Blitz fog, low pressure',  np: 55,  gpm: 500 },
+      'blitz-fog-high': { label: 'Blitz fog, high pressure', np: 100, gpm: 500 },
+      'blitz-sb-1':     { label: 'Blitz smooth bore 1″',      np: 50,  gpm: 300 },
+      'blitz-sb-125':   { label: 'Blitz smooth bore 1¼″',     np: 50,  gpm: 400 },
+      'blitz-sb-150':   { label: 'Blitz smooth bore 1½″',     np: 50,  gpm: 500 },
+    },
+    // Handline hose-size factors: FL/100′ = (GPM × HS) ÷ 10 − 10
+    hs: { '1.75': { label: '1¾″', hs: 3 }, '2.5': { label: '2½″', hs: 1 } },
+    // Master stream / supply line: FL/100′ = Q × (Q − 1) ÷ HS, Q = gpm ÷ 100, HS = 4 for 4″ supply
+    supplyHS: 4,
+    appliances: {
+      'none':        { label: 'None', psi: 0 },
+      'gated-wye':   { label: 'Gated wye', psi: 10, note: 'add 10 psi if flow through it exceeds 350 gpm' },
+      'ladder':      { label: 'Ladder', psi: 40 },
+      'stang-gun':   { label: 'Stang gun', psi: 25 },
+      'foam-eductor':{ label: 'Foam eductor', psi: 0, note: 'operating pressure 200 psi, nozzle set at 95 gpm' },
+      'pump-to-pump':{ label: 'Pump to pump', psi: 20 },
+    },
+  };
+  function handlineFLper100(gpm, size) { return (gpm * REF.hs[size].hs) / 10 - 10; }
+  function supplyFLper100(gpm, hs = REF.supplyHS) { const q = gpm / 100; return q * (q - 1) / hs; }
+
+  // Work a line from its layout: NP from the nozzle, FL from the formula, AP from the table, EL as given.
+  function solve(line) {
+    const noz = REF.nozzles[line.nozzle];
+    const per100 = handlineFLper100(noz.gpm, line.size);
+    const fl = per100 * line.length / 100;
+    const ap = REF.appliances[line.appliance || 'none'].psi;
+    const el = line.el || 0;
+    const np = noz.np;
+    return {
+      np, fl, ap, el, pdp: np + fl + ap + el,
+      steps: [
+        `NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`,
+        `FL/100′ = (${noz.gpm} × ${REF.hs[line.size].hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
+        `FL = ${fmt(per100)} × ${line.length}′ ÷ 100 = ${fmt(fl)} psi`,
+        `AP ${fmt(ap)} psi (${REF.appliances[line.appliance || 'none'].label.toLowerCase()})`,
+        `EL ${fmt(el)} psi`,
+        `PDP = ${np} + ${fmt(fl)} + ${fmt(ap)} ${el < 0 ? '−' : '+'} ${fmt(Math.abs(el))} = ${fmt(np + fl + ap + el)} psi`,
+      ],
+    };
+  }
+
+  // ============================================================
+  // Evolutions. Each line: hose layout for the math, plus the traced
+  // hose path, nozzle tip and leg mask for the water overlay.
+  // ============================================================
+  const SCENARIOS = [
+    {
+      id: 'e1', title: 'Evolution 1', sub: '150′ 1¾″ smooth bore', image: 'scene-150.jpg',
+      lines: [{
+        name: 'Line 1', length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', el: 0,
+        path: 'M 740 396 L 752 414 L 762 438 L 785 526 L 794 541 L 807 554 L 828 568 L 847 576 L 940 602 L 973 615 L 1005 634 L 1016 647 L 1072 674 L 1097 683 L 1134 689 L 1175 690 L 1193 687 L 1224 678 L 1249 667 L 1314 630 L 1319 624 L 1425 576',
+        tip: [1452, 563], mask: '1318,592 1412,578 1420,650 1400,720 1322,720',
+      }],
+    },
+    {
+      id: 'e2', title: 'Evolution 2', sub: '200′ 1¾″ smooth bore', image: 'scene-200.jpg',
+      lines: [{
+        name: 'Line 1', length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', el: 0,
+        path: 'M 546 310 L 558 328 L 582 405 L 593 420 L 609 431 L 657 444 L 777 456 L 815 463 L 848 473 L 866 487 L 869 509 L 866 519 L 858 527 L 832 540 L 765 565 L 737 585 L 732 602 L 734 617 L 739 625 L 752 634 L 771 641 L 798 646 L 911 651 L 981 666 L 1035 688 L 1093 727 L 1129 747 L 1174 763 L 1215 772 L 1252 776 L 1289 772 L 1372 743 L 1382 734 L 1470 690',
+        tip: [1482, 686], mask: '1355,725 1465,700 1478,825 1360,828',
+      }],
+    },
+    {
+      id: 'e3', title: 'Evolution 3', sub: 'Two lines, 150′ and 200′ 1¾″', image: 'scene-two.jpg',
+      lines: [{
+        name: 'Line 1', length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', el: 0,
+        path: 'M 550 307 L 587 368 L 608 387 L 638 402 L 692 410 L 821 407 L 850 411 L 891 424 L 905 434 L 965 464 L 1017 479 L 1053 478 L 1080 472 L 1089 465 L 1160 440',
+        tip: [1187, 435], mask: '1065,455 1165,440 1172,535 1070,535',
+      }, {
+        name: 'Line 2', length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', el: 0,
+        path: 'M 535 332 L 545 347 L 562 400 L 571 421 L 584 437 L 607 453 L 650 467 L 761 480 L 812 489 L 849 501 L 869 515 L 874 534 L 871 546 L 866 553 L 834 569 L 781 588 L 765 598 L 760 611 L 761 623 L 766 633 L 776 639 L 822 649 L 878 649 L 927 654 L 983 667 L 1040 691 L 1096 729 L 1124 745 L 1166 761 L 1218 773 L 1248 776 L 1283 774 L 1330 760 L 1384 737 L 1470 690',
+        tip: [1495, 687], mask: '1355,725 1465,700 1478,825 1360,828',
+      }],
+    },
+  ];
+  const IMG_W = 1672, IMG_H = 941;
+  const TERMS = [
+    { key: 'np', label: 'NP', desc: 'Nozzle pressure', op: '' },
+    { key: 'fl', label: 'FL', desc: 'Friction loss', op: '+' },
+    { key: 'ap', label: 'AP', desc: 'Appliance', op: '+' },
+    { key: 'el', label: 'EL', desc: 'Elevation', op: '±' },
+  ];
+
+  // ============================================================
+  // App state
+  // ============================================================
+  const $ = id => document.getElementById(id);
+  const tabsEl = $('tabs'), layout = $('layout'), scene = $('scene'), verdict = $('verdict');
+  const calc = $('calc'), hint = $('hint'), work = $('work'), panelSub = $('panel-sub');
+  let current = null, solved = [], lineEls = [], lineGroups = [];
+
+  function fmt(n) { return Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toString(); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  // ---------- tabs ----------
+  SCENARIOS.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tab'; b.role = 'tab'; b.id = 'tab-' + s.id;
+    b.innerHTML = `${esc(s.title)} <small>${esc(s.sub)}</small>`;
+    b.addEventListener('click', () => load(i));
+    tabsEl.append(b);
+  });
+
+  // ---------- scene ----------
+  function buildScene(s) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${IMG_W} ${IMG_H}`);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `Aerial photo of Engine 150: ${s.sub}`);
+    let defs = `
+      <defs>
+        <linearGradient id="g-stream" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
+          <stop offset=".3" stop-color="#BFE4FA" stop-opacity=".85"/>
+          <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="g-mist">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".7"/><stop offset="1" stop-color="#BFE4FA" stop-opacity="0"/>
+        </radialGradient>`;
+    s.lines.forEach((l, i) => {
+      defs += `<mask id="m-leg-${i}"><rect width="${IMG_W}" height="${IMG_H}" fill="#fff"/><polygon points="${l.mask}" fill="#000"/></mask>`;
+    });
+    defs += '</defs>';
+    let body = `<image href="${s.image}" width="${IMG_W}" height="${IMG_H}"/>`;
+    s.lines.forEach((l, i) => {
+      body += `
+      <g class="line" id="line-${i}">
+        <g mask="url(#m-leg-${i})">
+          <path class="water core" d="${l.path}" fill="none" stroke="#2C8FD6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+          <path class="water hi" d="${l.path}" fill="none" stroke="#9FDBFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
         </g>
-
-        <!-- vector spray from the smooth bore -->
-        <g id="stream" transform="translate(1452,563)">
+        <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]})">
           <path d="M 0 -4 C 60 -22, 140 -48, 225 -70 L 225 42 C 140 22, 60 8, 0 6 Z" fill="url(#g-stream)"/>
           <path class="drop" d="M 4 -1 C 70 -18, 150 -44, 225 -62" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".95"/>
           <path class="drop d2" d="M 4 3 C 70 -6, 150 -22, 225 -30" stroke="#DDF1FD" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
@@ -289,155 +487,164 @@
           <circle class="mist m2" cx="215" cy="-14" r="40" fill="url(#g-mist)"/>
           <circle class="mist m3" cx="150" cy="-38" r="30" fill="url(#g-mist)"/>
         </g>
-      </svg>
-    </section>
+      </g>`;
+    });
+    svg.innerHTML = defs + body;
+    scene.querySelector('svg')?.remove();
+    scene.append(svg);
+    lineGroups = s.lines.map((_, i) => svg.querySelector('#line-' + i));
+    // prime the water so it fills along the hose; fill time scales with hose length
+    lineGroups.forEach(g => {
+      let len = 0;
+      g.querySelectorAll('.water').forEach(p => {
+        len = p.getTotalLength();
+        p.style.strokeDasharray = len;
+        p.style.strokeDashoffset = len;
+      });
+      g.style.setProperty('--dur', (len / 620).toFixed(2) + 's');
+    });
+  }
 
-    <section class="panel" aria-labelledby="panel-title">
-      <div class="panel-head">
-        <div class="panel-title" id="panel-title">Pump Discharge Pressure</div>
-        <div class="panel-sub">Discharge 1 · 150′ 1¾″ · smooth bore</div>
-        <div class="formula"><b>PDP</b> = NP + FL + EL + AP</div>
-      </div>
-
-      <form class="stack" id="calc" novalidate>
-        <div class="term">
-          <span class="op" aria-hidden="true"></span>
-          <label for="np"><b>NP</b><small>Nozzle pressure</small></label>
-          <input id="np" name="np" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off" autofocus>
-        </div>
-        <div class="term">
-          <span class="op" aria-hidden="true">+</span>
-          <label for="fl"><b>FL</b><small>Friction loss</small></label>
-          <input id="fl" name="fl" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
-        </div>
-        <div class="term">
-          <span class="op" aria-hidden="true">+</span>
-          <label for="el"><b>EL</b><small>Elevation</small></label>
-          <input id="el" name="el" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
-        </div>
-        <div class="term">
-          <span class="op" aria-hidden="true">+</span>
-          <label for="ap"><b>AP</b><small>Appliance</small></label>
-          <input id="ap" name="ap" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
-        </div>
-        <hr class="rule">
+  // ---------- worksheet ----------
+  function buildPanel(s) {
+    calc.innerHTML = '';
+    lineEls = s.lines.map((l, i) => {
+      const stack = document.createElement('div');
+      stack.className = 'stack';
+      const sol = solved[i];
+      let html = `<div class="stack-head"><span>${esc(l.name)} <small>${l.length}′ ${esc(REF.nozzles[l.nozzle].label.replace(' handline', ''))}</small></span><span class="state" id="state-${i}" hidden></span></div>`;
+      TERMS.forEach(t => {
+        const id = `${t.key}-${i}`;
+        html += `<div class="term">
+          <span class="op" aria-hidden="true">${t.op}</span>
+          <label for="${id}"><b>${t.label}</b><small>${t.desc}</small></label>
+          <input id="${id}" data-line="${i}" data-key="${t.key}" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
+        </div>`;
+      });
+      html += `<hr class="rule">
         <div class="term total">
           <span class="op" aria-hidden="true">=</span>
           <label><b>PDP</b><small>Pump discharge</small></label>
-          <div class="val" id="total-box"><span id="total">—</span><small>psi</small></div>
-        </div>
-      </form>
-
-      <div class="actions">
-        <button type="button" class="charge" id="charge">Charge the line <kbd>Enter</kbd></button>
-        <button type="button" class="reset" id="reset">Reset</button>
-        <p class="hint" id="hint">Enter all four values, then press Enter.</p>
-      </div>
-    </section>
-  </div>
-
-  <p class="notes"><b>How it grades.</b> Each of the four values is checked against the answer key for this evolution, and the total must match the pump discharge pressure. A correct answer charges the line and the nozzle flows; a wrong one asks you to rework the numbers.</p>
-</div>
-
-<script>
-  // Scenario data. A future upload can replace this object (or an array of them).
-  const scenario = {
-    id: 'glendale-e150-150ft-175-smoothbore',
-    hose: '150′ of 1¾″',
-    nozzle: 'Smooth bore',
-    answers: { np: 50, fl: 57, el: 0, ap: 0 }
-  };
-  const keys = ['np', 'fl', 'el', 'ap'];
-  const inputs = Object.fromEntries(keys.map(k => [k, document.getElementById(k)]));
-  const totalEl = document.getElementById('total');
-  const scene = document.getElementById('scene');
-  const verdict = document.getElementById('verdict');
-  const hint = document.getElementById('hint');
-
-  // Prime the water paths so they can "fill" along the hose.
-  for (const id of ['water-core', 'water-hi']) {
-    const p = document.getElementById(id);
-    const len = p.getTotalLength();
-    p.style.strokeDasharray = len;
-    p.style.strokeDashoffset = len;
+          <div class="val"><span id="total-${i}">—</span><small>psi</small></div>
+        </div>`;
+      stack.innerHTML = html;
+      calc.append(stack);
+      return {
+        inputs: Object.fromEntries(TERMS.map(t => [t.key, stack.querySelector('#' + t.key + '-' + i)])),
+        total: stack.querySelector('#total-' + i),
+        state: stack.querySelector('#state-' + i),
+      };
+    });
+    calc.querySelectorAll('input').forEach(inp => inp.addEventListener('input', onInput));
+    const single = s.lines.length === 1;
+    $('charge').innerHTML = (single ? 'Charge the line' : 'Charge the lines') + ' <kbd>Enter</kbd>';
+    panelSub.textContent = s.lines.map(l => `${l.name}: ${l.length}′ ${REF.hs[l.size].label}`).join(' · ');
   }
 
-  function read(k) {
-    const v = inputs[k].value.trim();
-    return v === '' ? null : Number(v);
-  }
-  function total() {
-    const vals = keys.map(read);
+  function read(i, k) { const v = lineEls[i].inputs[k].value.trim(); return v === '' ? null : Number(v); }
+  function total(i) {
+    const vals = TERMS.map(t => read(i, t.key));
     if (vals.some(v => v === null || Number.isNaN(v))) return null;
     return vals.reduce((a, b) => a + b, 0);
   }
-  function fmt(n) {
-    return Number.isInteger(n) ? String(n) : n.toFixed(1);
-  }
   function refresh() {
-    const t = total();
-    totalEl.textContent = t === null ? '—' : fmt(t);
+    lineEls.forEach((le, i) => { const t = total(i); le.total.textContent = t === null ? '—' : fmt(t); });
+  }
+  function onInput(e) {
+    e.target.classList.remove('wrong');
+    const i = Number(e.target.dataset.line);
+    if (lineGroups[i].classList.contains('charged')) { lineGroups[i].classList.remove('charged'); setState(i, null); hideVerdict(); work.classList.remove('show'); }
+    refresh();
+  }
+  function setState(i, kind) {
+    const el = lineEls[i].state;
+    if (!kind) { el.hidden = true; el.className = 'state'; return; }
+    el.hidden = false; el.className = 'state ' + kind; el.textContent = kind === 'good' ? 'Charged' : 'Incorrect';
   }
 
   function showVerdict(kind, title, detail) {
     verdict.className = 'verdict ' + kind;
     verdict.innerHTML = '';
     verdict.append(title);
-    if (detail) {
-      const s = document.createElement('small');
-      s.textContent = detail;
-      verdict.append(s);
-    }
-    requestAnimationFrame(() => {
-      verdict.classList.add('show');
-      if (kind === 'bad') verdict.classList.add('shake');
-    });
+    if (detail) { const s = document.createElement('small'); s.textContent = detail; verdict.append(s); }
+    requestAnimationFrame(() => { verdict.classList.add('show'); if (kind === 'bad') verdict.classList.add('shake'); });
   }
   function hideVerdict() { verdict.classList.remove('show', 'shake'); }
 
   function check() {
-    keys.forEach(k => inputs[k].classList.remove('wrong'));
-    const t = total();
-    if (t === null) {
-      hint.textContent = 'All four values are needed. Enter 0 where there is none.';
-      keys.filter(k => read(k) === null).forEach(k => inputs[k].classList.add('wrong'));
+    calc.querySelectorAll('input').forEach(inp => inp.classList.remove('wrong'));
+    const missing = [];
+    lineEls.forEach((le, i) => TERMS.forEach(t => { if (read(i, t.key) === null) { missing.push(le.inputs[t.key]); } }));
+    if (missing.length) {
+      missing.forEach(inp => inp.classList.add('wrong'));
+      hint.textContent = 'Every value is needed. Enter 0 where there is none.';
       return;
     }
-    const expected = keys.reduce((a, k) => a + scenario.answers[k], 0);
-    const allMatch = keys.every(k => read(k) === scenario.answers[k]);
-    if (allMatch && t === expected) {
-      scene.classList.add('charged');
-      showVerdict('good', 'Correct — PDP ' + fmt(t) + ' psi', 'Line charged. Water is flowing.');
-      hint.textContent = 'Nice work. Reset to run it again.';
+    const results = current.lines.map((l, i) => {
+      const sol = solved[i];
+      const ok = TERMS.every(t => read(i, t.key) === sol[t.key]) && total(i) === sol.pdp;
+      lineGroups[i].classList.toggle('charged', ok);
+      setState(i, ok ? 'good' : 'bad');
+      return ok;
+    });
+    const single = current.lines.length === 1;
+    if (results.every(Boolean)) {
+      const totals = current.lines.map((l, i) => single ? `PDP ${fmt(solved[i].pdp)} psi` : `${l.name} ${fmt(solved[i].pdp)} psi`).join(' · ');
+      showVerdict('good', 'Correct — ' + totals, single ? 'Line charged. Water is flowing.' : 'Both lines charged. Water is flowing.');
+      hint.textContent = 'Nice work. The math is shown below.';
+      showWork();
     } else {
-      scene.classList.remove('charged');
-      showVerdict('bad', 'Incorrect', 'Rework your values and try again.');
-      hint.textContent = 'That is not the pump discharge pressure for this line.';
+      const bad = current.lines.filter((l, i) => !results[i]).map(l => l.name);
+      showVerdict('bad', 'Incorrect', single ? 'Rework your values and try again.' : `${bad.join(' and ')} ${bad.length > 1 ? 'are' : 'is'} wrong. Rework and charge again.`);
+      hint.textContent = single ? 'That is not the pump discharge pressure for this line.' : 'Correct lines stay charged. Fix the rest and press Enter.';
+      work.classList.remove('show');
     }
+  }
+  function showWork() {
+    work.innerHTML = current.lines.map((l, i) => `<div><h3>${esc(l.name)} · worked</h3><ol>${solved[i].steps.map(s => '<li>' + esc(s).replace(/^(\w+)/, '<b>$1</b>') + '</li>').join('')}</ol></div>`).join('');
+    work.classList.add('show');
   }
 
   function reset() {
-    keys.forEach(k => { inputs[k].value = ''; inputs[k].classList.remove('wrong'); });
-    scene.classList.remove('charged');
-    hideVerdict();
-    hint.textContent = 'Enter all four values, then press Enter.';
+    calc.querySelectorAll('input').forEach(inp => { inp.value = ''; inp.classList.remove('wrong'); });
+    lineGroups.forEach((g, i) => { g.classList.remove('charged'); setState(i, null); });
+    hideVerdict(); work.classList.remove('show');
+    hint.textContent = 'Enter all values, then press Enter.';
     refresh();
-    inputs.np.focus();
+    lineEls[0]?.inputs.np.focus();
   }
 
-  keys.forEach(k => {
-    inputs[k].addEventListener('input', () => {
-      inputs[k].classList.remove('wrong');
-      if (scene.classList.contains('charged')) { scene.classList.remove('charged'); hideVerdict(); }
-      refresh();
-    });
-  });
-  document.getElementById('calc').addEventListener('submit', e => e.preventDefault());
+  function load(i) {
+    current = SCENARIOS[i];
+    solved = current.lines.map(solve);
+    tabsEl.querySelectorAll('.tab').forEach((t, j) => t.setAttribute('aria-selected', String(j === i)));
+    layout.classList.toggle('multi', current.lines.length > 1);
+    buildScene(current);
+    buildPanel(current);
+    reset();
+  }
+
+  // ---------- reference drawer ----------
+  function buildRef() {
+    const noz = Object.values(REF.nozzles).map(n => `<tr><td>${esc(n.label)}</td><td>${n.np} psi · ${n.gpm}${n.gpmMax ? '–' + n.gpmMax : ''} gpm</td></tr>`).join('');
+    const hs = Object.values(REF.hs).map(h => `<tr><td>${h.label} handline</td><td>HS = ${h.hs}</td></tr>`).join('');
+    const ap = Object.values(REF.appliances).filter(a => a.label !== 'None').map(a => `<tr><td>${esc(a.label)}${a.note ? `<br><span style="color:var(--ink-soft);font-size:12.5px">${esc(a.note)}</span>` : ''}</td><td>${a.psi ? a.psi + ' psi' : '—'}</td></tr>`).join('');
+    $('ref').innerHTML = `
+      <div><h3>Pump discharge pressure</h3><p class="eq">PDP = NP + FL + AP ± EL</p>
+        <h3 style="margin-top:14px">Nozzle pressure</h3><table>${noz}</table></div>
+      <div><h3>Friction loss, handline</h3><p class="eq">FL/100′ = (GPM × HS) ÷ 10 − 10</p><table>${hs}</table>
+        <h3 style="margin-top:14px">Friction loss, master stream / supply</h3><p class="eq">FL/100′ = Q × (Q − 1) ÷ HS</p><p>Q = gpm ÷ 100. HS = 4 for 4″ supply line.</p></div>
+      <div><h3>Appliance loss</h3><table>${ap}</table></div>`;
+  }
+
+  // ---------- wiring ----------
+  calc.addEventListener('submit', e => e.preventDefault());
   document.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); check(); }
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SUMMARY') { e.preventDefault(); check(); }
     if (e.key === 'Escape') reset();
   });
-  document.getElementById('charge').addEventListener('click', check);
-  document.getElementById('reset').addEventListener('click', reset);
-  refresh();
+  $('charge').addEventListener('click', check);
+  $('reset').addEventListener('click', reset);
+  buildRef();
+  load(0);
 </script>
