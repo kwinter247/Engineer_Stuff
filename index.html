@@ -375,7 +375,7 @@
       '4':    { label: '4″',  hs: 4, formula: 'master' },
     },
     // Elevation: half a psi for every foot of elevation, added above grade and subtracted below
-    elevation: { psiPerFoot: 0.5 },
+    elevation: { psiPerFoot: 0.5, psiPerFloor: 5 },   // by height: ½ psi per foot; in a building: 5 psi per floor above ground
     appliances: {
       'none':        { label: 'None', psi: 0 },
       // Gated wye: no loss under 350 gpm through it, 10 psi over
@@ -410,7 +410,9 @@
     // Flow-dependent appliances (gated wye): the loss applies only above the threshold
     const ap = appl.over && noz.gpm > appl.over.gpm ? appl.over.psi : appl.psi;
     const elFt = line.elevationFt || 0;
-    const el = elFt * REF.elevation.psiPerFoot;
+    // A floor number means a building: 5 psi for every floor above the ground floor
+    const floorsUp = line.floor ? line.floor - 1 : 0;
+    const el = line.floor ? floorsUp * REF.elevation.psiPerFloor : elFt * REF.elevation.psiPerFoot;
     // Relay: the next engine is in service, so this pump only feeds its intake. No nozzle pressure,
     // FL on the line between the engines at the downstream flow, plus pump-to-pump. Nothing past that engine counts.
     const np = line.relay ? 0 : noz.np;
@@ -436,7 +438,9 @@
           : `AP ${fmt(ap)} psi (${appl.label.toLowerCase()})`,
         line.relay && !elFt
           ? `EL 0 psi: ${line.relay} sits at grade. The ladder's elevation is ${line.relay}'s to pump.`
-          : `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
+          : line.floor
+            ? `EL = ${floorsUp} floor${floorsUp === 1 ? '' : 's'} above ground × ${REF.elevation.psiPerFloor} = ${fmt(el)} psi (floor ${line.floor}; the ground floor counts as 0)`
+            : `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
         `PDP = ${np} + ${fmt(fl)} + ${fmt(ap)} ${el < 0 ? '−' : '+'} ${fmt(Math.abs(el))} = ${fmt(np + fl + ap + el)} psi`,
       ],
     };
@@ -529,6 +533,16 @@
         tip: [1615, 730], mask: '1485,775 1590,765 1592,890 1490,890',
       }],
     },
+    {
+      id: 'e8', title: 'Evolution 8', sub: 'Standpipe: 100′ 2½″ to the FDC, 150′ 1¾″ on the 3rd floor', image: 'scene-standpipe.jpg',
+      lines: [{
+        name: 'Standpipe line', desc: '100′ 2½″ to the FDC → riser → 150′ 1¾″ on the 3rd floor · smooth bore',
+        hose: [{ length: 100, size: '2.5' }, { length: 150, size: '1.75' }], nozzle: 'sb-175', appliance: 'none', floor: 3,
+        // 2½″ from the panel to the FDC, up the riser, then the 1¾″ along the third floor
+        path: 'M 523 622 L 532 629 L 537 642 L 544 650 L 569 667 L 620 687 L 678 701 L 728 702 L 788 694 L 802 683 L 798 661 L 825 672 M 841 668 L 841 415 L 866 404 L 898 419 L 933 428 L 1137 460 L 1270 474 L 1313 474 L 1347 467 L 1395 455',
+        tip: [1423, 452], streamScale: .5, mask: '1345,425 1400,420 1402,495 1348,495',
+      }],
+    },
   ];
   const IMG_W = 1672, IMG_H = 941;
   const TERMS = [
@@ -611,7 +625,7 @@
           <circle class="mist m2" cx="${m2x}" cy="${m2y}" r="${L * .095}" fill="url(#g-mist)"/>
           <circle class="mist m3" cx="${m3x}" cy="${m3y}" r="${L * .06}" fill="url(#g-mist)"/>
         </g>`; })() : `
-        <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]})">
+        <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]}) scale(${l.streamScale || 1})">
           <path d="M 0 -4 C 60 -22, 140 -48, 225 -70 L 225 42 C 140 22, 60 8, 0 6 Z" fill="url(#g-stream)"/>
           <path class="drop" d="M 4 -1 C 70 -18, 150 -44, 225 -62" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".95"/>
           <path class="drop d2" d="M 4 3 C 70 -6, 150 -22, 225 -30" stroke="#DDF1FD" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
@@ -652,7 +666,7 @@
         const id = `${t.key}-${i}`;
         html += `<div class="term">
           <span class="op" aria-hidden="true">${t.op}</span>
-          <label for="${id}"><b>${t.label}</b><small>${t.desc}</small></label>
+          <label for="${id}"><b>${t.label}</b><small>${t.key === 'el' && l.floor ? 'Elevation, 5 psi per floor' : t.desc}</small></label>
           <input id="${id}" data-line="${i}" data-key="${t.key}" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
         </div>`;
       });
@@ -811,6 +825,7 @@
         <h3 style="margin-top:14px">Two supply lines</h3><p>Two lines from the engine to the same appliance split the flow. Figure FL for one line at half the gpm, and add it once.</p>
         <h3 style="margin-top:14px">More than one line flowing</h3><p>The engine's PDP is the highest line's pressure. Every lower line is gated down at its discharge.</p>
         <h3 style="margin-top:14px">Elevation</h3><p class="eq">EL = height (ft) × 0.5 psi</p><p>Half the elevation in feet. Add it for a nozzle above the pump, subtract it below.</p>
+        <p class="eq" style="margin-top:8px">EL = floors above ground × 5 psi</p><p>In a building, count floors above the ground floor: the 3rd floor is 2 up, 10 psi.</p>
         <h3 style="margin-top:14px">Appliance loss</h3><table>${ap}</table></div>`;
   }
 

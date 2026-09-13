@@ -9,7 +9,7 @@ A single-page app for practicing pump discharge pressure (PDP) calculations, usi
 | NP | Nozzle pressure (psi) |
 | FL | Friction loss in the hose (psi) |
 | AP | Appliance loss (psi) |
-| EL | Elevation pressure: 0.5 psi per foot of elevation, negative below grade |
+| EL | Elevation pressure: 0.5 psi per foot of elevation (negative below grade), or 5 psi per floor above ground in a building |
 
 The user enters every value for each line. The app totals the PDP live. Pressing **Enter** (or "Charge the line") grades each line against the answer worked from the Glendale sheet. A correct line charges: water fills the hose in the photo and the nozzle flows. A wrong line stays dry and the app shows **Incorrect**. After a correct answer the worked math is shown under the panel.
 
@@ -28,6 +28,7 @@ The user enters every value for each line. The app totals the PDP live. Pressing
 | 7 · Deck gun | Fog master stream on E151, no hose, Stang gun | 100 | 0 | 25 | 0 | **125** |
 | 7 · Line 1 | 150′ 1¾″ smooth bore | 50 | 57 | 0 | 0 | **107** |
 | 7 · Line 2 | 200′ 2½″ into a Blitz, then 150′ 1¾″ smooth bore | 50 | 69 | 0 | 0 | **119** |
+| 8 | Standpipe: 100′ 2½″ to the FDC, 150′ 1¾″ smooth bore on the 3rd floor | 50 | 63 | 0 | 10 | **123** |
 
 Evolution 7, line 2: the same 160 gpm flows through both sections, so FL is 12 on the 2½″ ((160 × 1) ÷ 10 − 10 = 6 per 100′) plus 57 on the 1¾″. The Blitz is used as a gated wye, and a gated wye costs nothing under 350 gpm (10 psi over), so AP is 0.
 
@@ -45,7 +46,8 @@ Encoded in the `REF` object in `index.html`, from the Glendale hydraulics sheet:
 - Rule of Eights stack tips at 80 psi: 1¼″ 400 gpm through 2″ 1000 gpm.
 - Handline friction loss: FL/100′ = (GPM × HS) ÷ 10 − 10, with HS = 3 for 1¾″ and 1 for 2½″.
 - Master stream / supply line friction loss: FL/100′ = Q × (Q − 1) ÷ HS, Q = gpm ÷ 100, HS = 4 for 4″. A line with `size: '4'` uses this formula automatically.
-- Elevation: EL = feet of elevation × 0.5 psi, added above the pump and subtracted below.
+- Elevation by height: EL = feet of elevation × 0.5 psi, added above the pump and subtracted below.
+- Elevation in a building (`floor: 3` on a line): 5 psi per floor above the ground floor, so the 3rd floor is 10 psi.
 - Two supply lines to the same appliance (`supplyLines: 2` on a line) split the flow: FL is figured for one line at half the gpm and added once.
 - More than one line flowing: the engine's PDP is the highest line's PDP; the rest gate down.
 - Series hose (`hose: [{length, size}, …]` on a line): FL is figured per section at the line's gpm and summed.
