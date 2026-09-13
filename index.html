@@ -353,6 +353,8 @@
     hs: { '1.75': { label: '1¾″', hs: 3 }, '2.5': { label: '2½″', hs: 1 } },
     // Master stream / supply line: FL/100′ = Q × (Q − 1) ÷ HS, Q = gpm ÷ 100, HS = 4 for 4″ supply
     supplyHS: 4,
+    // Elevation: half a psi for every foot of elevation, added above grade and subtracted below
+    elevation: { psiPerFoot: 0.5 },
     appliances: {
       'none':        { label: 'None', psi: 0 },
       'gated-wye':   { label: 'Gated wye', psi: 10, note: 'add 10 psi if flow through it exceeds 350 gpm' },
@@ -371,7 +373,8 @@
     const per100 = handlineFLper100(noz.gpm, line.size);
     const fl = per100 * line.length / 100;
     const ap = REF.appliances[line.appliance || 'none'].psi;
-    const el = line.el || 0;
+    const elFt = line.elevationFt || 0;
+    const el = elFt * REF.elevation.psiPerFoot;
     const np = noz.np;
     return {
       np, fl, ap, el, pdp: np + fl + ap + el,
@@ -380,7 +383,7 @@
         `FL/100′ = (${noz.gpm} × ${REF.hs[line.size].hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
         `FL = ${fmt(per100)} × ${line.length}′ ÷ 100 = ${fmt(fl)} psi`,
         `AP ${fmt(ap)} psi (${REF.appliances[line.appliance || 'none'].label.toLowerCase()})`,
-        `EL ${fmt(el)} psi`,
+        `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
         `PDP = ${np} + ${fmt(fl)} + ${fmt(ap)} ${el < 0 ? '−' : '+'} ${fmt(Math.abs(el))} = ${fmt(np + fl + ap + el)} psi`,
       ],
     };
@@ -394,7 +397,7 @@
     {
       id: 'e1', title: 'Evolution 1', sub: '150′ 1¾″ smooth bore', image: 'scene-150.jpg',
       lines: [{
-        name: 'Line 1', length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', el: 0,
+        name: 'Line 1', length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
         path: 'M 740 396 L 752 414 L 762 438 L 785 526 L 794 541 L 807 554 L 828 568 L 847 576 L 940 602 L 973 615 L 1005 634 L 1016 647 L 1072 674 L 1097 683 L 1134 689 L 1175 690 L 1193 687 L 1224 678 L 1249 667 L 1314 630 L 1319 624 L 1425 576',
         tip: [1452, 563], mask: '1318,592 1412,578 1420,650 1400,720 1322,720',
       }],
@@ -402,7 +405,7 @@
     {
       id: 'e2', title: 'Evolution 2', sub: '200′ 1¾″ smooth bore', image: 'scene-200.jpg',
       lines: [{
-        name: 'Line 1', length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', el: 0,
+        name: 'Line 1', length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
         path: 'M 546 310 L 558 328 L 582 405 L 593 420 L 609 431 L 657 444 L 777 456 L 815 463 L 848 473 L 866 487 L 869 509 L 866 519 L 858 527 L 832 540 L 765 565 L 737 585 L 732 602 L 734 617 L 739 625 L 752 634 L 771 641 L 798 646 L 911 651 L 981 666 L 1035 688 L 1093 727 L 1129 747 L 1174 763 L 1215 772 L 1252 776 L 1289 772 L 1372 743 L 1382 734 L 1470 690',
         tip: [1482, 686], mask: '1355,725 1465,700 1478,825 1360,828',
       }],
@@ -410,11 +413,11 @@
     {
       id: 'e3', title: 'Evolution 3', sub: 'Two lines, 150′ and 200′ 1¾″', image: 'scene-two.jpg',
       lines: [{
-        name: 'Line 1', length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', el: 0,
+        name: 'Line 1', length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
         path: 'M 550 307 L 587 368 L 608 387 L 638 402 L 692 410 L 821 407 L 850 411 L 891 424 L 905 434 L 965 464 L 1017 479 L 1053 478 L 1080 472 L 1089 465 L 1160 440',
         tip: [1187, 435], mask: '1065,455 1165,440 1172,535 1070,535',
       }, {
-        name: 'Line 2', length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', el: 0,
+        name: 'Line 2', length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
         path: 'M 535 332 L 545 347 L 562 400 L 571 421 L 584 437 L 607 453 L 650 467 L 761 480 L 812 489 L 849 501 L 869 515 L 874 534 L 871 546 L 866 553 L 834 569 L 781 588 L 765 598 L 760 611 L 761 623 L 766 633 L 776 639 L 822 649 L 878 649 L 927 654 L 983 667 L 1040 691 L 1096 729 L 1124 745 L 1166 761 L 1218 773 L 1248 776 L 1283 774 L 1330 760 L 1384 737 L 1470 690',
         tip: [1495, 687], mask: '1355,725 1465,700 1478,825 1360,828',
       }],
@@ -425,7 +428,7 @@
     { key: 'np', label: 'NP', desc: 'Nozzle pressure', op: '' },
     { key: 'fl', label: 'FL', desc: 'Friction loss', op: '+' },
     { key: 'ap', label: 'AP', desc: 'Appliance', op: '+' },
-    { key: 'el', label: 'EL', desc: 'Elevation', op: '±' },
+    { key: 'el', label: 'EL', desc: 'Elevation, 0.5 psi per ft', op: '±' },
   ];
 
   // ============================================================
@@ -634,7 +637,8 @@
         <h3 style="margin-top:14px">Nozzle pressure</h3><table>${noz}</table></div>
       <div><h3>Friction loss, handline</h3><p class="eq">FL/100′ = (GPM × HS) ÷ 10 − 10</p><table>${hs}</table>
         <h3 style="margin-top:14px">Friction loss, master stream / supply</h3><p class="eq">FL/100′ = Q × (Q − 1) ÷ HS</p><p>Q = gpm ÷ 100. HS = 4 for 4″ supply line.</p></div>
-      <div><h3>Appliance loss</h3><table>${ap}</table></div>`;
+      <div><h3>Elevation</h3><p class="eq">EL = height (ft) × 0.5 psi</p><p>Half the elevation in feet. Add it for a nozzle above the pump, subtract it below.</p>
+        <h3 style="margin-top:14px">Appliance loss</h3><table>${ap}</table></div>`;
   }
 
   // ---------- wiring ----------
