@@ -30,6 +30,9 @@ The user enters every value for each line. The app totals the PDP live. Pressing
 | 7 · Line 2 | 200′ 2½″ into a Blitz, then 150′ 1¾″ smooth bore | 50 | 69 | 0 | 0 | **119** |
 | 8 | Standpipe: 100′ 2½″ to the FDC, 150′ 1¾″ smooth bore on the 3rd floor | 50 | 63 | 0 | 10 | **123** |
 | 9 | E150, 300′ 2½″ to a high pressure fog Blitz (500 gpm) | 100 | 120 | 0 | 0 | **220** |
+| 10 | E156 supplying a ladder through two 100′ 4″ lines, 1¾″ stack tip (800 gpm) 100′ up | 80 | 3 | 40 | 50 | **173** |
+
+Evolution 10: two supply lines split the 800 gpm to 400 each, so FL per 100′ is 4 × 3 ÷ 4 = 3 psi, added once.
 
 Evolution 7, line 2: the same 160 gpm flows through both sections, so FL is 12 on the 2½″ ((160 × 1) ÷ 10 − 10 = 6 per 100′) plus 57 on the 1¾″. The Blitz is used as a gated wye, and a gated wye costs nothing under 350 gpm (10 psi over), so AP is 0.
 
