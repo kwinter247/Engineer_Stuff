@@ -359,7 +359,7 @@
       'tip-175':  { label: '1¾″ stack tip, master stream', short: '1¾″ stack tip', np: 80, gpm: 800, group: 'tips' },
       'tip-1875': { label: '1⅞″ stack tip, master stream', short: '1⅞″ stack tip', np: 80, gpm: 900, group: 'tips' },
       'tip-2':    { label: '2″ stack tip, master stream',  short: '2″ stack tip',  np: 80, gpm: 1000, group: 'tips' },
-      'fog-master':{ label: 'Fog master stream',        np: 100, gpm: 1000 },
+      'fog-master':{ label: 'Fog master stream',        short: 'fog master stream', np: 100, gpm: 1000 },
       'penetrating':{ label: 'Penetrating nozzle',      np: 100, gpm: 95 },
       'blitz-fog-low':  { label: 'Blitz fog, low pressure',  np: 55,  gpm: 500 },
       'blitz-fog-high': { label: 'Blitz fog, high pressure', np: 100, gpm: 500 },
@@ -383,6 +383,7 @@
       'stang-gun':   { label: 'Stang gun', psi: 25 },
       'foam-eductor':{ label: 'Foam eductor', psi: 0, note: 'operating pressure 200 psi, nozzle set at 95 gpm' },
       'pump-to-pump':{ label: 'Pump to pump', psi: 20 },
+      'blitz':       { label: 'Blitz', psi: 10, note: 'value not on the sheet; treated like a gated wye until confirmed' },
     },
   };
   function handlineFLper100(gpm, size) { return (gpm * REF.hs[size].hs) / 10 - 10; }
@@ -391,14 +392,19 @@
   // Work a line from its layout: NP from the nozzle, FL from the formula, AP from the table, EL as given.
   function solve(line) {
     const noz = REF.nozzles[line.nozzle];
-    const size = line.noHose ? null : REF.hs[line.size];
-    const master = !!size && size.formula === 'master';
+    // A line is one hose, a series of hoses (2½″ into an appliance, then 1¾″), or piped on the engine
+    const segs = line.noHose ? [] : (line.hose || [{ length: line.length, size: line.size }]);
     // Two supply lines to the same appliance split the flow; FL is figured for one line at half the gpm
     const nLines = line.supplyLines || 1;
     const flowGpm = noz.gpm / nLines;
     const q = flowGpm / 100;
-    const per100 = line.noHose ? 0 : master ? supplyFLper100(flowGpm, size.hs) : handlineFLper100(flowGpm, line.size);
-    const fl = line.noHose ? 0 : per100 * line.length / 100;
+    const worked = segs.map(seg => {
+      const size = REF.hs[seg.size];
+      const master = size.formula === 'master';
+      const per100 = master ? supplyFLper100(flowGpm, size.hs) : handlineFLper100(flowGpm, seg.size);
+      return { seg, size, master, per100, fl: per100 * seg.length / 100 };
+    });
+    const fl = worked.reduce((a, x) => a + x.fl, 0);
     const ap = REF.appliances[line.appliance || 'none'].psi;
     const elFt = line.elevationFt || 0;
     const el = elFt * REF.elevation.psiPerFoot;
@@ -413,11 +419,14 @@
              `GPM comes from what the ladder is flowing: ${noz.label}, ${noz.gpm} gpm.`]
           : [`NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`]),
         ...(line.noHose ? [`FL 0 psi: the ${line.name.toLowerCase()} is piped on the engine, no hose.`] : [
-          ...(nLines > 1 ? [`${nLines} × ${size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
-          master
-            ? `FL/100′ = Q × (Q − 1) ÷ HS = ${fmt(q)} × ${fmt(q - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${fmt(flowGpm)} ÷ 100, HS ${size.hs} for ${size.label})`
-            : `FL/100′ = (${fmt(flowGpm)} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
-          `FL = ${fmt(per100)} × ${line.length}′ ÷ 100 = ${fmt(fl)} psi${nLines > 1 ? ' (one line)' : ''}`,
+          ...(nLines > 1 ? [`${nLines} × ${worked[0].size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
+          ...worked.flatMap(({ seg, size, master, per100, fl: segFl }) => [
+            master
+              ? `FL/100′ ${size.label} = Q × (Q − 1) ÷ HS = ${fmt(q)} × ${fmt(q - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${fmt(flowGpm)} ÷ 100, HS ${size.hs} for ${size.label})`
+              : `FL/100′ ${size.label} = (${fmt(flowGpm)} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
+            `FL ${size.label} = ${fmt(per100)} × ${seg.length}′ ÷ 100 = ${fmt(segFl)} psi${nLines > 1 ? ' (one line)' : ''}`,
+          ]),
+          ...(worked.length > 1 ? [`FL total = ${worked.map(x => fmt(x.fl)).join(' + ')} = ${fmt(fl)} psi (same ${fmt(flowGpm)} gpm flows through every section)`] : []),
         ]),
         `AP ${fmt(ap)} psi (${REF.appliances[line.appliance || 'none'].label.toLowerCase()})`,
         line.relay && !elFt
@@ -493,6 +502,26 @@
         length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
         path: 'M 526 498 L 522 512 L 521 537 L 524 556 L 535 584 L 568 628 L 613 664 L 678 701 L 762 734 L 861 763 L 961 784 L 1074 796 L 1144 799 L 1228 797 L 1304 787 L 1353 776 L 1398 759 L 1452 725 L 1492 688 L 1560 655',
         tip: [1615, 642], mask: '1470,675 1582,665 1588,800 1480,800',
+      }],
+    },
+    {
+      id: 'e7', title: 'Evolution 7', sub: 'E151 fog master stream, 150′ 1¾″, and 200′ 2½″ through a Blitz to 150′ 1¾″', image: 'scene-blitz.jpg',
+      lines: [{
+        name: 'Deck gun', desc: 'fog master stream, piped on the engine',
+        noHose: true, nozzle: 'fog-master', appliance: 'stang-gun', elevationFt: 0,
+        path: 'M 545 420 L 580 360 L 610 305 L 650 265 L 677 250',
+        tip: [677, 250], stream: 'arc', arc: { c: [300, -170], end: [700, -60] }, mask: '0,0 0,0 0,0',
+      }, {
+        name: 'Line 1', desc: '150′ 1¾″ · smooth bore',
+        length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
+        // leaves the panel behind the cab, reappears below the front bumper
+        path: 'M 528 470 L 600 495 L 700 505 L 800 506 L 908 504 L 911 495 L 921 485 L 938 483 L 954 475 L 1052 501 L 1186 529 L 1345 550 L 1396 550 L 1442 543 L 1474 531 L 1504 509 L 1565 462',
+        tip: [1615, 455], mask: '536,430 890,430 890,560 536,560 536,430 1485,495 1590,485 1592,610 1490,610',
+      }, {
+        name: 'Line 2', desc: '200′ 2½″ → Blitz → 150′ 1¾″ · smooth bore',
+        hose: [{ length: 200, size: '2.5' }, { length: 150, size: '1.75' }], nozzle: 'sb-175', appliance: 'blitz', elevationFt: 0,
+        path: 'M 506 497 L 503 520 L 505 543 L 511 567 L 525 596 L 560 639 L 609 678 L 654 707 L 732 742 L 780 758 L 848 771 L 893 773 L 904 765 M 1061 741 L 1098 752 L 1205 808 L 1236 819 L 1285 827 L 1373 832 L 1424 825 L 1475 808 L 1510 785 L 1565 742',
+        tip: [1615, 730], mask: '1485,775 1590,765 1592,890 1490,890',
       }],
     },
   ];
@@ -606,13 +635,14 @@
   }
 
   // ---------- worksheet ----------
+  const hoseLabel = l => l.noHose ? REF.nozzles[l.nozzle].short : (l.hose || [{ length: l.length, size: l.size }]).map(h => `${h.length}′ ${REF.hs[h.size].label}`).join(' → ');
   function buildPanel(s) {
     calc.innerHTML = '';
     lineEls = s.lines.map((l, i) => {
       const stack = document.createElement('div');
       stack.className = 'stack';
       const sol = solved[i];
-      let html = `<div class="stack-head"><span>${esc(l.name)} <small>${esc(l.desc || `${l.length}′ ${REF.hs[l.size].label} · ${REF.nozzles[l.nozzle].short || REF.nozzles[l.nozzle].label}`)}</small></span><span class="state" id="state-${i}" hidden></span></div>`;
+      let html = `<div class="stack-head"><span>${esc(l.name)} <small>${esc(l.desc || `${hoseLabel(l)} · ${REF.nozzles[l.nozzle].short || REF.nozzles[l.nozzle].label}`)}</small></span><span class="state" id="state-${i}" hidden></span></div>`;
       TERMS.forEach(t => {
         const id = `${t.key}-${i}`;
         html += `<div class="term">
@@ -650,7 +680,7 @@
     calc.querySelectorAll('input').forEach(inp => inp.addEventListener('input', onInput));
     const single = s.lines.length === 1;
     $('charge').innerHTML = (single ? 'Charge the line' : 'Charge the lines') + ' <kbd>Enter</kbd>';
-    panelSub.textContent = s.lines.map(l => `${l.name}: ${l.noHose ? REF.nozzles[l.nozzle].short : `${l.length}′ ${REF.hs[l.size].label}`}`).join(' · ');
+    panelSub.textContent = s.lines.map(l => `${l.name}: ${hoseLabel(l)}`).join(' · ');
   }
 
   function read(i, k) { const v = lineEls[i].inputs[k].value.trim(); return v === '' ? null : Number(v); }
