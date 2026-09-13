@@ -80,6 +80,18 @@
   .tab[aria-selected="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
   .tab:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
 
+  .progress {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--navy);
+  }
+  :root[data-theme="dark"] .progress { color: var(--yellow); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .progress { color: var(--yellow); } }
+  .progress small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
+  .progress .dots { display: flex; gap: 5px; margin-left: auto; }
+  .progress .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: block; }
+  .progress .dots i.done { background: var(--ink-soft); }
+  .progress .dots i.now { background: var(--yellow); box-shadow: 0 0 0 2px var(--navy); }
   .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
   .layout.multi { grid-template-columns: 1fr; }
   @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
@@ -314,7 +326,8 @@
     <p class="sub">Work the hydraulics, charge the line. Glendale Fire Department values.</p>
   </header>
 
-  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="tabs" role="tablist" id="tabs" hidden></div>
+  <div class="progress" id="progress"></div>
 
   <div class="layout" id="layout">
     <section class="scene" id="scene">
@@ -831,6 +844,8 @@
     current = SCENARIOS[i];
     solved = current.lines.map(solve);
     tabsEl.querySelectorAll('.tab').forEach((t, j) => t.setAttribute('aria-selected', String(j === i)));
+    $('progress').innerHTML = `<span>${esc(current.title)} of ${SCENARIOS.length}</span><small>${esc(current.sub)}</small>` +
+      `<span class="dots" aria-hidden="true">${SCENARIOS.map((_, j) => `<i class="${j < i ? 'done' : j === i ? 'now' : ''}"></i>`).join('')}</span>`;
     layout.classList.toggle('multi', current.lines.length > 1);
     buildScene(current);
     buildPanel(current);
