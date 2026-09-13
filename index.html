@@ -245,7 +245,7 @@
   .term.total .val small { font-size: 12px; color: var(--panel-muted); font-weight: 500; }
 
   .actions { display: grid; gap: 10px; }
-  .multi .actions { grid-template-columns: auto auto 1fr; align-items: center; }
+  .multi .actions { grid-template-columns: auto auto auto 1fr; align-items: center; }
   button {
     font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
     border-radius: 4px; padding: 10px 20px; cursor: pointer; border: 1px solid transparent;
@@ -257,6 +257,9 @@
   .charge:active { transform: translateY(1px); }
   .reset { background: transparent; color: var(--panel-muted); border-color: #3A414D; font-size: 17px; padding: 8px 16px; }
   .reset:hover { color: var(--panel-text); border-color: var(--panel-muted); }
+  .teach { background: transparent; color: var(--water); border-color: rgba(93,183,240,.45); font-size: 17px; padding: 8px 16px; }
+  .teach:hover { background: rgba(93,183,240,.12); border-color: var(--water); }
+  .work h3 .tag { font-size: 11px; letter-spacing: .1em; color: var(--water); margin-left: 8px; }
   kbd {
     font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600;
     background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.15); border-radius: 3px;
@@ -322,6 +325,7 @@
       <div class="actions">
         <button type="button" class="charge" id="charge">Charge the line <kbd>Enter</kbd></button>
         <button type="button" class="reset" id="reset">Reset</button>
+        <button type="button" class="teach" id="teach">Teach me</button>
         <p class="hint" id="hint">Enter all values, then press Enter.</p>
       </div>
 
@@ -357,7 +361,7 @@
       'fog-master':{ label: 'Fog master stream',        short: 'fog master stream', np: 100, gpm: 1000 },
       'penetrating':{ label: 'Penetrating nozzle',      np: 100, gpm: 95 },
       'blitz-fog-low':  { label: 'Blitz fog, low pressure',  np: 55,  gpm: 500 },
-      'blitz-fog-high': { label: 'Blitz fog, high pressure', np: 100, gpm: 500 },
+      'blitz-fog-high': { label: 'Blitz fog, high pressure', short: 'high pressure Blitz', np: 100, gpm: 500 },
       'blitz-sb-1':     { label: 'Blitz smooth bore 1″',      np: 50,  gpm: 300 },
       'blitz-sb-125':   { label: 'Blitz smooth bore 1¼″',     np: 50,  gpm: 400 },
       'blitz-sb-150':   { label: 'Blitz smooth bore 1½″',     np: 50,  gpm: 500 },
@@ -536,6 +540,15 @@
         // 2½″ from the panel to the FDC, up the riser, then the 1¾″ along the third floor
         path: 'M 523 622 L 532 629 L 537 642 L 544 650 L 569 667 L 620 687 L 678 701 L 728 702 L 788 694 L 802 683 L 798 661 L 825 672 M 841 668 L 841 415 L 866 404 L 898 419 L 933 428 L 1137 460 L 1270 474 L 1313 474 L 1347 467 L 1395 455',
         tip: [1423, 452], streamScale: .5, mask: '1345,425 1400,420 1402,495 1348,495',
+      }],
+    },
+    {
+      id: 'e9', title: 'Evolution 9', sub: 'E150, 300′ 2½″ to a high pressure Blitz', image: 'scene-hpblitz.jpg',
+      lines: [{
+        name: 'Blitz line', desc: '300′ 2½″ · high pressure fog Blitz',
+        length: 300, size: '2.5', nozzle: 'blitz-fog-high', appliance: 'none', elevationFt: 0,
+        path: 'M 621 541 L 626 539 L 632 542 L 648 567 L 689 597 L 721 615 L 774 637 L 832 655 L 885 666 L 950 676 L 1019 681 L 1166 681 L 1241 675 L 1295 666 L 1341 656 L 1386 641 L 1484 596 L 1540 545 L 1590 505 L 1627 480',
+        tip: [1627, 480], stream: 'arc', arc: { c: [30, -170], end: [45, -330] }, mask: '0,0 0,0 0,0',
       }],
     },
   ];
@@ -770,8 +783,9 @@
       work.classList.remove('show');
     }
   }
-  function showWork() {
-    let html = current.lines.map((l, i) => `<div><h3>${esc(l.name)} · worked</h3><ol>${solved[i].steps.map(s => '<li>' + esc(s).replace(/^(\w+)/, '<b>$1</b>') + '</li>').join('')}</ol></div>`).join('');
+  function showWork(teaching) {
+    const tag = teaching ? '<span class="tag">Teach me</span>' : '';
+    let html = current.lines.map((l, i) => `<div><h3>${esc(l.name)} · worked${tag}</h3><ol>${solved[i].steps.map(s => '<li>' + esc(s).replace(/^(\w+)/, '<b>$1</b>') + '</li>').join('')}</ol></div>`).join('');
     if (current.lines.length > 1) {
       const top = enginePDP();
       const gated = current.lines.filter((l, i) => solved[i].pdp < top).map((l) => l.name);
@@ -831,6 +845,11 @@
   });
   $('charge').addEventListener('click', check);
   $('reset').addEventListener('click', reset);
+  $('teach').addEventListener('click', () => {
+    showWork(true);
+    hint.textContent = 'Worked answer shown below. Follow it, then enter the values and charge the line.';
+    work.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
   buildRef();
   load(0);
 </script>

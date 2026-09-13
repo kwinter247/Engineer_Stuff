@@ -11,7 +11,7 @@ A single-page app for practicing pump discharge pressure (PDP) calculations, usi
 | AP | Appliance loss (psi) |
 | EL | Elevation pressure: 0.5 psi per foot of elevation (negative below grade), or 5 psi per floor above ground in a building |
 
-The user enters every value for each line. The app totals the PDP live. Pressing **Enter** (or "Charge the line") grades each line against the answer worked from the Glendale sheet. A correct line charges: water fills the hose in the photo and the nozzle flows. A wrong line stays dry and the app shows **Incorrect**. After a correct answer the worked math is shown under the panel.
+The user enters every value for each line. The app totals the PDP live. Pressing **Enter** (or "Charge the line") grades each line against the answer worked from the Glendale sheet. A correct line charges: water fills the hose in the photo and the nozzle flows. A wrong line stays dry and the app shows **Incorrect**. After a correct answer the worked math is shown under the panel. A **Teach me** button shows the same worked math on demand, for review before or instead of attempting the evolution.
 
 ## Evolutions
 
@@ -29,6 +29,7 @@ The user enters every value for each line. The app totals the PDP live. Pressing
 | 7 · Line 1 | 150′ 1¾″ smooth bore | 50 | 57 | 0 | 0 | **107** |
 | 7 · Line 2 | 200′ 2½″ into a Blitz, then 150′ 1¾″ smooth bore | 50 | 69 | 0 | 0 | **119** |
 | 8 | Standpipe: 100′ 2½″ to the FDC, 150′ 1¾″ smooth bore on the 3rd floor | 50 | 63 | 0 | 10 | **123** |
+| 9 | E150, 300′ 2½″ to a high pressure fog Blitz (500 gpm) | 100 | 120 | 0 | 0 | **220** |
 
 Evolution 7, line 2: the same 160 gpm flows through both sections, so FL is 12 on the 2½″ ((160 × 1) ÷ 10 − 10 = 6 per 100′) plus 57 on the 1¾″. The Blitz is used as a gated wye, and a gated wye costs nothing under 350 gpm (10 psi over), so AP is 0.
 
