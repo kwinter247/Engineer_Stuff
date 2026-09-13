@@ -23,7 +23,7 @@ Engine 150 at a hydrant, 150′ of 1¾″ to a smooth bore nozzle.
 
 ## Running it
 
-Open `index.html` in a browser. There is no build step and no dependencies beyond Google Fonts.
+Open `index.html` in a browser. There is no build step and no dependencies beyond Google Fonts. Keep `scene.jpg` next to it; the page draws the water and spray as SVG over that photo (the reference photo with the hose recolored yellow and the spray removed).
 
 ## Adding evolutions
 
