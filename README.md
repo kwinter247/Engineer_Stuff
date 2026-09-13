@@ -21,16 +21,20 @@ The user enters every value for each line. The app totals the PDP live. Pressing
 | 2 | 200′ 1¾″ smooth bore | 50 | 76 | 0 | 0 | **126** |
 | 3 · Line 1 | 150′ 1¾″ smooth bore | 50 | 57 | 0 | 0 | **107** |
 | 3 · Line 2 | 200′ 1¾″ smooth bore | 50 | 76 | 0 | 0 | **126** |
+| 4 | E159 supplying Ladder 152 through 450′ of 4″, 1⅜″ stack tip 100′ up | 80 | 22.5 | 40 | 50 | **192.5** |
 
 Friction loss for a 1¾″ smooth bore handline at 160 gpm: (160 × 3) ÷ 10 − 10 = 38 psi per 100′.
+
+Friction loss for 4″ supply at 500 gpm: Q = 5, so 5 × 4 ÷ 4 = 5 psi per 100′, and 22.5 psi for 450′. Entered values within half a psi of the exact answer are accepted, so 22 or 23 for FL and 192 or 193 for PDP all grade as correct.
 
 ## Reference values in the app
 
 Encoded in the `REF` object in `index.html`, from the Glendale hydraulics sheet:
 
 - Nozzle pressures and flows (1¾″ and 2½″ smooth bore handlines, master streams, penetrating nozzle, blitz nozzles).
+- Rule of Eights stack tips at 80 psi: 1¼″ 400 gpm through 2″ 1000 gpm.
 - Handline friction loss: FL/100′ = (GPM × HS) ÷ 10 − 10, with HS = 3 for 1¾″ and 1 for 2½″.
-- Master stream / supply line friction loss: FL/100′ = Q × (Q − 1) ÷ HS, Q = gpm ÷ 100, HS = 4 for 4″.
+- Master stream / supply line friction loss: FL/100′ = Q × (Q − 1) ÷ HS, Q = gpm ÷ 100, HS = 4 for 4″. A line with `size: '4'` uses this formula automatically.
 - Elevation: EL = feet of elevation × 0.5 psi, added above the pump and subtracted below.
 - Appliance losses: gated wye 10, ladder 40, Stang gun 25, pump to pump 20; foam eductor operates at 200 psi.
 

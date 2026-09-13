@@ -123,6 +123,7 @@
     opacity: .92;
     white-space: normal;
   }
+  .scene.verdict-bottom .verdict { top: auto; bottom: 22px; }
   .verdict.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
   .verdict.bad { background: var(--bad); }
   .verdict.good { background: var(--good); }
@@ -145,6 +146,10 @@
   .drop.d3 { animation-duration: 1.2s; stroke-dasharray: 28 40; }
   .drop.d4 { animation-duration: .95s; stroke-dasharray: 12 26; }
   @keyframes drop { to { stroke-dashoffset: -56; } }
+  .drop.arc { stroke-dasharray: 46 74; animation: dropArc .9s linear infinite; }
+  .drop.arc.d2 { animation-duration: 1.1s; stroke-dasharray: 30 60; }
+  .drop.arc.d3 { animation-duration: .8s; stroke-dasharray: 38 82; }
+  @keyframes dropArc { to { stroke-dashoffset: -120; } }
   .mist { animation: mist 2.2s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
   .mist.m2 { animation-delay: -.8s; }
   .mist.m3 { animation-delay: -1.5s; }
@@ -338,9 +343,17 @@
   // ============================================================
   const REF = {
     nozzles: {
-      'sb-175':   { label: '1¾″ smooth bore handline', np: 50,  gpm: 160 },
-      'sb-250':   { label: '2½″ smooth bore handline', np: 50,  gpm: 300 },
+      'sb-175':   { label: '1¾″ smooth bore handline', short: 'smooth bore', np: 50,  gpm: 160 },
+      'sb-250':   { label: '2½″ smooth bore handline', short: 'smooth bore', np: 50,  gpm: 300 },
       'sb-master':{ label: 'Smooth bore master stream', np: 80,  gpm: 400, gpmMax: 1000 },
+      // Rule of Eights with stack tips (master streams): 80 psi, gpm from the tip size
+      'tip-125':  { label: '1¼″ stack tip, master stream', short: '1¼″ stack tip', np: 80, gpm: 400, group: 'tips' },
+      'tip-1375': { label: '1⅜″ stack tip, master stream', short: '1⅜″ stack tip', np: 80, gpm: 500, group: 'tips' },
+      'tip-150':  { label: '1½″ stack tip, master stream', short: '1½″ stack tip', np: 80, gpm: 600, group: 'tips' },
+      'tip-1625': { label: '1⅝″ stack tip, master stream', short: '1⅝″ stack tip', np: 80, gpm: 700, group: 'tips' },
+      'tip-175':  { label: '1¾″ stack tip, master stream', short: '1¾″ stack tip', np: 80, gpm: 800, group: 'tips' },
+      'tip-1875': { label: '1⅞″ stack tip, master stream', short: '1⅞″ stack tip', np: 80, gpm: 900, group: 'tips' },
+      'tip-2':    { label: '2″ stack tip, master stream',  short: '2″ stack tip',  np: 80, gpm: 1000, group: 'tips' },
       'fog-master':{ label: 'Fog master stream',        np: 100, gpm: 1000 },
       'penetrating':{ label: 'Penetrating nozzle',      np: 100, gpm: 95 },
       'blitz-fog-low':  { label: 'Blitz fog, low pressure',  np: 55,  gpm: 500 },
@@ -350,9 +363,12 @@
       'blitz-sb-150':   { label: 'Blitz smooth bore 1½″',     np: 50,  gpm: 500 },
     },
     // Handline hose-size factors: FL/100′ = (GPM × HS) ÷ 10 − 10
-    hs: { '1.75': { label: '1¾″', hs: 3 }, '2.5': { label: '2½″', hs: 1 } },
-    // Master stream / supply line: FL/100′ = Q × (Q − 1) ÷ HS, Q = gpm ÷ 100, HS = 4 for 4″ supply
-    supplyHS: 4,
+    hs: {
+      '1.75': { label: '1¾″', hs: 3, formula: 'handline' },
+      '2.5':  { label: '2½″', hs: 1, formula: 'handline' },
+      // Master stream / supply line: FL/100′ = Q × (Q − 1) ÷ HS, Q = gpm ÷ 100, HS = 4 for 4″ supply
+      '4':    { label: '4″',  hs: 4, formula: 'master' },
+    },
     // Elevation: half a psi for every foot of elevation, added above grade and subtracted below
     elevation: { psiPerFoot: 0.5 },
     appliances: {
@@ -365,12 +381,15 @@
     },
   };
   function handlineFLper100(gpm, size) { return (gpm * REF.hs[size].hs) / 10 - 10; }
-  function supplyFLper100(gpm, hs = REF.supplyHS) { const q = gpm / 100; return q * (q - 1) / hs; }
+  function supplyFLper100(gpm, hs) { const q = gpm / 100; return q * (q - 1) / hs; }
 
   // Work a line from its layout: NP from the nozzle, FL from the formula, AP from the table, EL as given.
   function solve(line) {
     const noz = REF.nozzles[line.nozzle];
-    const per100 = handlineFLper100(noz.gpm, line.size);
+    const size = REF.hs[line.size];
+    const master = size.formula === 'master';
+    const q = noz.gpm / 100;
+    const per100 = master ? supplyFLper100(noz.gpm, size.hs) : handlineFLper100(noz.gpm, line.size);
     const fl = per100 * line.length / 100;
     const ap = REF.appliances[line.appliance || 'none'].psi;
     const elFt = line.elevationFt || 0;
@@ -380,7 +399,9 @@
       np, fl, ap, el, pdp: np + fl + ap + el,
       steps: [
         `NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`,
-        `FL/100′ = (${noz.gpm} × ${REF.hs[line.size].hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
+        master
+          ? `FL/100′ = Q × (Q − 1) ÷ HS = ${fmt(q)} × ${fmt(q - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${noz.gpm} ÷ 100, HS ${size.hs} for ${size.label})`
+          : `FL/100′ = (${noz.gpm} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
         `FL = ${fmt(per100)} × ${line.length}′ ÷ 100 = ${fmt(fl)} psi`,
         `AP ${fmt(ap)} psi (${REF.appliances[line.appliance || 'none'].label.toLowerCase()})`,
         `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
@@ -422,13 +443,22 @@
         tip: [1495, 687], mask: '1355,725 1465,700 1478,825 1360,828',
       }],
     },
+    {
+      id: 'e4', title: 'Evolution 4', sub: 'E159 supplying Ladder 152, 450′ 4″, 100′ up', image: 'scene-ladder.jpg', verdict: 'bottom',
+      lines: [{
+        name: 'E159 to L152', length: 450, size: '4', nozzle: 'tip-1375', appliance: 'ladder', elevationFt: 100,
+        // 4″ supply from E159's discharge to the ladder's inlet, then the waterway up the ladder to the tip
+        path: 'M 1284 628 L 1303 653 L 1323 692 L 1331 716 L 1331 734 L 1322 754 L 1304 771 L 1286 782 L 1250 795 L 1238 794 L 1182 802 L 1169 808 L 1125 808 L 1079 803 L 968 781 L 913 778 L 872 783 L 860 781 L 785 798 L 773 804 L 729 806 L 697 803 L 685 806 L 664 797 L 569 770 L 538 754 L 516 739 L 500 724 L 483 699 L 452 629 L 428 586 L 416 570 M 222 512 L 600 66 L 617 58',
+        tip: [617, 58], stream: 'arc', mask: '0,0 0,0 0,0',
+      }],
+    },
   ];
   const IMG_W = 1672, IMG_H = 941;
   const TERMS = [
     { key: 'np', label: 'NP', desc: 'Nozzle pressure', op: '' },
     { key: 'fl', label: 'FL', desc: 'Friction loss', op: '+' },
     { key: 'ap', label: 'AP', desc: 'Appliance', op: '+' },
-    { key: 'el', label: 'EL', desc: 'Elevation, 0.5 psi per ft', op: '±' },
+    { key: 'el', label: 'EL', desc: 'Elevation, ½ psi per ft', op: '±' },
   ];
 
   // ============================================================
@@ -440,6 +470,8 @@
   let current = null, solved = [], lineEls = [], lineGroups = [];
 
   function fmt(n) { return Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toString(); }
+  // Rounded answers (22.5 entered as 22 or 23) are accepted: within half a psi
+  const near = (a, b) => Math.abs(a - b) <= 0.5;
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
   // ---------- tabs ----------
@@ -465,6 +497,11 @@
           <stop offset=".3" stop-color="#BFE4FA" stop-opacity=".85"/>
           <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
         </linearGradient>
+        <linearGradient id="g-arc" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="623" y2="329">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
+          <stop offset=".45" stop-color="#CFEAFB" stop-opacity=".75"/>
+          <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
+        </linearGradient>
         <radialGradient id="g-mist">
           <stop offset="0" stop-color="#FFFFFF" stop-opacity=".7"/><stop offset="1" stop-color="#BFE4FA" stop-opacity="0"/>
         </radialGradient>`;
@@ -480,6 +517,17 @@
           <path class="water core" d="${l.path}" fill="none" stroke="#2C8FD6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
           <path class="water hi" d="${l.path}" fill="none" stroke="#9FDBFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
         </g>
+        ${l.stream === 'arc' ? `
+        <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]})">
+          <path d="M 0 0 Q 290 20 623 329" stroke="url(#g-arc)" stroke-width="30" fill="none" stroke-linecap="round" opacity=".5"/>
+          <path d="M 0 0 Q 290 20 623 329" stroke="url(#g-arc)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".9"/>
+          <path class="drop arc" d="M 0 0 Q 290 20 623 329" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>
+          <path class="drop arc d2" d="M 0 -5 Q 290 12 615 322" stroke="#DDF1FD" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+          <path class="drop arc d3" d="M 0 5 Q 290 30 632 338" stroke="#BFE4FA" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+          <circle class="mist" cx="540" cy="255" r="55" fill="url(#g-mist)"/>
+          <circle class="mist m2" cx="600" cy="305" r="65" fill="url(#g-mist)"/>
+          <circle class="mist m3" cx="470" cy="200" r="40" fill="url(#g-mist)"/>
+        </g>` : `
         <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]})">
           <path d="M 0 -4 C 60 -22, 140 -48, 225 -70 L 225 42 C 140 22, 60 8, 0 6 Z" fill="url(#g-stream)"/>
           <path class="drop" d="M 4 -1 C 70 -18, 150 -44, 225 -62" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".95"/>
@@ -489,7 +537,7 @@
           <circle class="mist" cx="190" cy="-42" r="46" fill="url(#g-mist)"/>
           <circle class="mist m2" cx="215" cy="-14" r="40" fill="url(#g-mist)"/>
           <circle class="mist m3" cx="150" cy="-38" r="30" fill="url(#g-mist)"/>
-        </g>
+        </g>`}
       </g>`;
     });
     svg.innerHTML = defs + body;
@@ -515,7 +563,7 @@
       const stack = document.createElement('div');
       stack.className = 'stack';
       const sol = solved[i];
-      let html = `<div class="stack-head"><span>${esc(l.name)} <small>${l.length}′ ${esc(REF.nozzles[l.nozzle].label.replace(' handline', ''))}</small></span><span class="state" id="state-${i}" hidden></span></div>`;
+      let html = `<div class="stack-head"><span>${esc(l.name)} <small>${l.length}′ ${REF.hs[l.size].label} · ${esc(REF.nozzles[l.nozzle].short || REF.nozzles[l.nozzle].label)}</small></span><span class="state" id="state-${i}" hidden></span></div>`;
       TERMS.forEach(t => {
         const id = `${t.key}-${i}`;
         html += `<div class="term">
@@ -585,7 +633,7 @@
     }
     const results = current.lines.map((l, i) => {
       const sol = solved[i];
-      const ok = TERMS.every(t => read(i, t.key) === sol[t.key]) && total(i) === sol.pdp;
+      const ok = TERMS.every(t => near(read(i, t.key), sol[t.key])) && near(total(i), sol.pdp);
       lineGroups[i].classList.toggle('charged', ok);
       setState(i, ok ? 'good' : 'bad');
       return ok;
@@ -622,6 +670,7 @@
     solved = current.lines.map(solve);
     tabsEl.querySelectorAll('.tab').forEach((t, j) => t.setAttribute('aria-selected', String(j === i)));
     layout.classList.toggle('multi', current.lines.length > 1);
+    scene.classList.toggle('verdict-bottom', current.verdict === 'bottom');
     buildScene(current);
     buildPanel(current);
     reset();
@@ -629,12 +678,14 @@
 
   // ---------- reference drawer ----------
   function buildRef() {
-    const noz = Object.values(REF.nozzles).map(n => `<tr><td>${esc(n.label)}</td><td>${n.np} psi · ${n.gpm}${n.gpmMax ? '–' + n.gpmMax : ''} gpm</td></tr>`).join('');
+    const noz = Object.values(REF.nozzles).filter(n => n.group !== 'tips').map(n => `<tr><td>${esc(n.label)}</td><td>${n.np} psi · ${n.gpm}${n.gpmMax ? '–' + n.gpmMax : ''} gpm</td></tr>`).join('');
+    const tips = Object.values(REF.nozzles).filter(n => n.group === 'tips').map(n => `<tr><td>${esc(n.short)}</td><td>${n.np} psi · ${n.gpm} gpm</td></tr>`).join('');
     const hs = Object.values(REF.hs).map(h => `<tr><td>${h.label} handline</td><td>HS = ${h.hs}</td></tr>`).join('');
     const ap = Object.values(REF.appliances).filter(a => a.label !== 'None').map(a => `<tr><td>${esc(a.label)}${a.note ? `<br><span style="color:var(--ink-soft);font-size:12.5px">${esc(a.note)}</span>` : ''}</td><td>${a.psi ? a.psi + ' psi' : '—'}</td></tr>`).join('');
     $('ref').innerHTML = `
       <div><h3>Pump discharge pressure</h3><p class="eq">PDP = NP + FL + AP ± EL</p>
-        <h3 style="margin-top:14px">Nozzle pressure</h3><table>${noz}</table></div>
+        <h3 style="margin-top:14px">Nozzle pressure</h3><table>${noz}</table>
+        <h3 style="margin-top:14px">Rule of Eights, stack tips</h3><table>${tips}</table><p>Tip size in eighths, plus 2 on the top number, gives the hundreds of gpm.</p></div>
       <div><h3>Friction loss, handline</h3><p class="eq">FL/100′ = (GPM × HS) ÷ 10 − 10</p><table>${hs}</table>
         <h3 style="margin-top:14px">Friction loss, master stream / supply</h3><p class="eq">FL/100′ = Q × (Q − 1) ÷ HS</p><p>Q = gpm ÷ 100. HS = 4 for 4″ supply line.</p></div>
       <div><h3>Elevation</h3><p class="eq">EL = height (ft) × 0.5 psi</p><p>Half the elevation in feet. Add it for a nozzle above the pump, subtract it below.</p>
