@@ -1,0 +1,625 @@
+<title>Engine 150 Pump Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --ground: #EEF0F3;
+    --surface: #FFFFFF;
+    --ink: #1B2230;
+    --ink-soft: #5A6474;
+    --line: #D3D8E0;
+    --yellow: #F5C12E;
+    --yellow-deep: #D9A417;
+    --navy: #1E3556;
+    --hose: #D2472F;
+    --water: #5DB7F0;
+    --water-deep: #2C8FD6;
+    --panel: #1C2027;
+    --panel-edge: #2C323C;
+    --panel-text: #E9ECF1;
+    --panel-muted: #8E97A6;
+    --good: #2F9E5B;
+    --bad: #C8392B;
+    --asphalt: #9A968F;
+    --asphalt-line: #8A867F;
+    --curb: #C9C6BE;
+    --grass: #7FA35A;
+    --shadow: rgba(20, 24, 32, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #14181F;
+      --surface: #1C2129;
+      --ink: #E6E9EE;
+      --ink-soft: #9AA3B2;
+      --line: #2E3541;
+      --asphalt: #5E5B56;
+      --asphalt-line: #524F4A;
+      --curb: #7E7B74;
+      --grass: #4C6A38;
+      --shadow: rgba(0, 0, 0, .45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #14181F;
+    --surface: #1C2129;
+    --ink: #E6E9EE;
+    --ink-soft: #9AA3B2;
+    --line: #2E3541;
+    --asphalt: #5E5B56;
+    --asphalt-line: #524F4A;
+    --curb: #7E7B74;
+    --grass: #4C6A38;
+    --shadow: rgba(0, 0, 0, .45);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Barlow", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    padding-inline: 16px;
+    padding-block: 20px 48px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 20px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+  h1 {
+    margin: 0;
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800;
+    font-size: clamp(30px, 4.5vw, 42px);
+    letter-spacing: .01em;
+    text-transform: uppercase;
+    line-height: 1;
+    text-wrap: balance;
+  }
+  h1 em { font-style: normal; color: var(--navy); }
+  :root[data-theme="dark"] h1 em { color: var(--yellow); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) h1 em { color: var(--yellow); } }
+  .sub { color: var(--ink-soft); margin: 0; font-size: 15px; }
+
+  /* ---------- scene ---------- */
+  .scene {
+    position: relative;
+    background: var(--asphalt);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 var(--line);
+  }
+  .scene svg { display: block; width: 100%; height: auto; }
+  .callout {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800;
+    font-size: 30px;
+    fill: var(--navy);
+  }
+  .callout-dot { fill: var(--navy); }
+  .callout-line { stroke: var(--navy); stroke-width: 2; fill: none; }
+
+  .verdict {
+    position: absolute;
+    left: 50%; top: 22px;
+    transform: translate(-50%, -12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    padding: 10px 18px 11px;
+    border-radius: 4px;
+    color: #fff;
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    box-shadow: 0 8px 24px var(--shadow);
+    white-space: nowrap;
+    max-width: calc(100% - 32px);
+  }
+  .verdict small {
+    display: block;
+    font-family: "Barlow", sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: 0;
+    text-transform: none;
+    opacity: .92;
+    white-space: normal;
+  }
+  .verdict.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .verdict.bad { background: var(--bad); }
+  .verdict.good { background: var(--good); }
+  .verdict.shake { animation: shake .45s ease; }
+  @keyframes shake {
+    0%, 100% { transform: translate(-50%, 0); }
+    20% { transform: translate(calc(-50% - 8px), 0); }
+    40% { transform: translate(calc(-50% + 8px), 0); }
+    60% { transform: translate(calc(-50% - 5px), 0); }
+    80% { transform: translate(calc(-50% + 5px), 0); }
+  }
+
+  /* water */
+  #water-attack, #water-supply { opacity: 0; }
+  .charged #water-supply { opacity: 1; stroke-dashoffset: 0 !important; transition: stroke-dashoffset 1.1s linear, opacity .1s; }
+  .charged #water-attack { opacity: 1; stroke-dashoffset: 0 !important; transition: stroke-dashoffset 1.6s linear .9s, opacity .1s .9s; }
+  #stream { opacity: 0; transition: opacity .4s ease; }
+  .charged #stream { opacity: 1; transition-delay: 2.4s; }
+  .drop { stroke-dasharray: 14 26; animation: drop 1.1s linear infinite; }
+  .drop.d2 { animation-duration: .9s; stroke-dasharray: 10 22; }
+  .drop.d3 { animation-duration: 1.3s; stroke-dasharray: 18 30; }
+  @keyframes drop { to { stroke-dashoffset: -40; } }
+  .mist { animation: mist 2.2s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  .mist.m2 { animation-delay: -.8s; }
+  .mist.m3 { animation-delay: -1.5s; }
+  @keyframes mist { 0%, 100% { opacity: .35; transform: scale(.9); } 50% { opacity: .7; transform: scale(1.1); } }
+  #needle { transition: transform .8s cubic-bezier(.3, 1.3, .5, 1); transform-origin: 90px 90px; }
+  .charged #attack-hose { stroke-width: 15; }
+  #attack-hose { transition: stroke-width .6s ease 1.2s; }
+  @media (prefers-reduced-motion: reduce) {
+    .charged #water-supply, .charged #water-attack, #stream, #needle, #attack-hose { transition: none; }
+    .drop, .mist { animation: none; }
+    .verdict.shake { animation: none; }
+  }
+
+  /* ---------- pump panel ---------- */
+  .panel {
+    background: var(--panel);
+    color: var(--panel-text);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 18px 20px 20px;
+    display: grid;
+    gap: 16px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 10px 30px var(--shadow);
+  }
+  .panel-head {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px;
+    border-bottom: 1px solid var(--panel-edge); padding-bottom: 12px;
+  }
+  .panel-title {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800; font-size: 22px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--yellow);
+  }
+  .panel-title span { color: var(--panel-muted); font-weight: 600; margin-left: 10px; letter-spacing: .04em; }
+  .formula {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px; color: var(--panel-muted); letter-spacing: .02em;
+  }
+  .formula b { color: var(--panel-text); font-weight: 600; }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr auto minmax(150px, 1.2fr);
+    gap: 10px;
+    align-items: end;
+  }
+  .op {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 30px; line-height: 1;
+    color: var(--panel-muted); padding-bottom: 12px; text-align: center;
+  }
+  .field { display: grid; gap: 6px; }
+  .field label {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--yellow);
+    display: flex; justify-content: space-between; gap: 6px;
+  }
+  .field label small { color: var(--panel-muted); letter-spacing: .04em; font-weight: 600; }
+  .field input {
+    width: 100%;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 24px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--panel-text);
+    background: #0F1217;
+    border: 1px solid #3A414D;
+    border-radius: 4px;
+    padding: 8px 10px;
+    text-align: right;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  .field input::-webkit-outer-spin-button, .field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .field input::placeholder { color: #4B5361; font-weight: 500; }
+  .field input:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px rgba(245,193,46,.25); }
+  .field input.wrong { border-color: var(--bad); box-shadow: 0 0 0 3px rgba(200,57,43,.3); }
+
+  .pdp {
+    display: grid; gap: 6px;
+  }
+  .pdp .lbl {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--water);
+  }
+  .pdp .val {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 32px; font-weight: 600; line-height: 1;
+    font-variant-numeric: tabular-nums;
+    background: #0F1217; border: 1px solid #3A414D; border-radius: 4px;
+    padding: 9px 12px; text-align: right;
+    color: var(--yellow);
+    display: flex; justify-content: flex-end; align-items: baseline; gap: 8px;
+  }
+  .pdp .val small { font-size: 13px; color: var(--panel-muted); font-weight: 500; }
+
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  button {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
+    border-radius: 4px; padding: 10px 20px; cursor: pointer; border: 1px solid transparent;
+  }
+  button:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
+  .charge { background: var(--yellow); color: #1B1600; border-color: var(--yellow-deep); }
+  .charge:hover { background: #FFCD3F; }
+  .charge:active { transform: translateY(1px); }
+  .reset { background: transparent; color: var(--panel-muted); border-color: #3A414D; }
+  .reset:hover { color: var(--panel-text); border-color: var(--panel-muted); }
+  kbd {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600;
+    background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.15); border-radius: 3px;
+    padding: 1px 6px; margin-left: 8px; letter-spacing: 0; vertical-align: 1px;
+  }
+  .hint { color: var(--panel-muted); font-size: 14px; margin-left: auto; }
+
+  .notes { color: var(--ink-soft); font-size: 14px; max-width: 65ch; margin: 0; }
+  .notes b { color: var(--ink); font-weight: 600; }
+
+  @media (max-width: 760px) {
+    .row { grid-template-columns: 1fr auto 1fr; }
+    .row .pdp { grid-column: 1 / -1; }
+    .row .op.eq { display: none; }
+    .callout { font-size: 44px; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Engine 150 <em>Pump Trainer</em></h1>
+    <p class="sub">Work the hydraulics, charge the line. 150′ of 1¾″ to a smooth bore.</p>
+  </header>
+
+  <section class="scene" id="scene" aria-label="Aerial view of Engine 150 at a hydrant with a 150 foot attack line to a firefighter">
+    <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
+    <svg viewBox="0 0 1200 620" xmlns="http://www.w3.org/2000/svg" role="img">
+      <defs>
+        <linearGradient id="g-roof" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#F4F4F2"/><stop offset="1" stop-color="#D9DAD6"/>
+        </linearGradient>
+        <linearGradient id="g-alu" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#E8E9E6"/><stop offset=".5" stop-color="#C9CBC8"/><stop offset="1" stop-color="#B7B9B5"/>
+        </linearGradient>
+        <linearGradient id="g-cab" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9EAE6"/>
+        </linearGradient>
+        <linearGradient id="g-yellow" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#FFD24A"/><stop offset="1" stop-color="#E7B01E"/>
+        </linearGradient>
+        <linearGradient id="g-stream" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
+          <stop offset=".35" stop-color="#BFE4FA" stop-opacity=".85"/>
+          <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="g-mist">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".7"/><stop offset="1" stop-color="#BFE4FA" stop-opacity="0"/>
+        </radialGradient>
+        <pattern id="p-tread" width="10" height="10" patternUnits="userSpaceOnUse">
+          <rect width="10" height="10" fill="#C9CBC8"/><circle cx="5" cy="5" r="1.2" fill="#9EA19C"/>
+        </pattern>
+        <filter id="f-blur"><feGaussianBlur stdDeviation="2"/></filter>
+      </defs>
+
+      <!-- ground -->
+      <rect width="1200" height="620" fill="var(--asphalt)"/>
+      <path d="M0 0 H1200 V80 L 150 210 L 0 260 Z" fill="var(--asphalt)"/>
+      <path d="M0 0 H520 L 0 250 Z" fill="var(--curb)"/>
+      <path d="M0 0 H300 L 0 150 Z" fill="var(--grass)"/>
+      <path d="M0 262 L 540 0" stroke="var(--asphalt-line)" stroke-width="3" fill="none"/>
+      <path d="M0 250 L 520 0" stroke="#E4E1D8" stroke-width="2" fill="none" opacity=".6"/>
+      <path d="M700 620 L 1200 380" stroke="var(--asphalt-line)" stroke-width="2" fill="none" opacity=".7"/>
+
+      <!-- hydrant -->
+      <g id="hydrant" transform="translate(60,88)">
+        <ellipse cx="6" cy="60" rx="20" ry="7" fill="rgba(0,0,0,.18)"/>
+        <rect x="-10" y="6" width="32" height="52" rx="6" fill="url(#g-yellow)"/>
+        <rect x="-16" y="30" width="44" height="7" rx="2" fill="#D9A417"/>
+        <rect x="-4" y="-8" width="20" height="16" rx="6" fill="#F5C12E"/>
+        <circle cx="6" cy="-10" r="7" fill="#E7B01E"/>
+        <rect x="20" y="20" width="16" height="12" rx="3" fill="#D9A417"/>
+        <rect x="-24" y="20" width="16" height="12" rx="3" fill="#D9A417"/>
+      </g>
+
+      <!-- supply line (hydrant to engine) -->
+      <path id="supply-hose" d="M 96 114 C 150 110, 180 150, 176 210 C 172 250, 160 270, 150 292" fill="none" stroke="#E7B01E" stroke-width="12" stroke-linecap="round"/>
+      <path id="water-supply" d="M 96 114 C 150 110, 180 150, 176 210 C 172 250, 160 270, 150 292" fill="none" stroke="var(--water)" stroke-width="4" stroke-linecap="round"/>
+
+      <!-- engine shadow -->
+      <path d="M 120 425 L 690 425 L 720 445 L 150 445 Z" fill="rgba(0,0,0,.22)" filter="url(#f-blur)"/>
+
+      <!-- ENGINE 150 -->
+      <g id="engine">
+        <!-- roof of rear body (top plane) -->
+        <path d="M 150 200 L 490 200 L 470 235 L 130 235 Z" fill="url(#g-roof)"/>
+        <path d="M 165 208 L 320 208 L 310 226 L 155 226 Z" fill="#CDCFCB" opacity=".8"/>
+        <path d="M 340 208 L 480 208 L 470 226 L 330 226 Z" fill="#CDCFCB" opacity=".8"/>
+        <!-- rear body side -->
+        <rect x="130" y="235" width="345" height="160" fill="url(#g-alu)"/>
+        <rect x="130" y="235" width="345" height="10" fill="#F5C12E"/>
+        <rect x="130" y="385" width="345" height="10" fill="#F5C12E"/>
+        <!-- compartment doors -->
+        <rect x="145" y="260" width="120" height="105" fill="#D6D8D4" stroke="#AEB1AC"/>
+        <rect x="275" y="260" width="185" height="70" fill="#D6D8D4" stroke="#AEB1AC"/>
+        <rect x="275" y="336" width="185" height="29" fill="url(#p-tread)" stroke="#AEB1AC"/>
+        <!-- navy stripe -->
+        <path d="M 130 322 H 250 L 290 300 H 470" stroke="#1E3556" stroke-width="7" fill="none"/>
+        <path d="M 130 332 H 246 L 286 310 H 470" stroke="#1E3556" stroke-width="2" fill="none" opacity=".6"/>
+        <!-- lettering -->
+        <text x="302" y="252" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="19" fill="#1E3556" letter-spacing="1.5">GLENDALE FIRE DEPT.</text>
+        <text x="205" y="300" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="18" fill="#1E3556">ENGINE</text>
+        <text x="205" y="342" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="40" fill="#1E3556">150</text>
+        <!-- star of life -->
+        <g transform="translate(365,282)" fill="#1E3556">
+          <rect x="-3" y="-13" width="6" height="26"/>
+          <rect x="-3" y="-13" width="6" height="26" transform="rotate(60)"/>
+          <rect x="-3" y="-13" width="6" height="26" transform="rotate(-60)"/>
+        </g>
+        <!-- rear panel chevrons -->
+        <rect x="118" y="235" width="14" height="160" fill="#F5C12E"/>
+        <path d="M118 250 l14 -10 v14 l-14 10z M118 278 l14 -10 v14 l-14 10z M118 306 l14 -10 v14 l-14 10z M118 334 l14 -10 v14 l-14 10z M118 362 l14 -10 v14 l-14 10z" fill="#C8392B"/>
+        <!-- pump panel -->
+        <rect x="475" y="215" width="60" height="180" fill="#2B2F36"/>
+        <rect x="475" y="215" width="60" height="20" fill="#1E3556"/>
+        <circle cx="505" cy="258" r="11" fill="#E9ECF1" stroke="#9EA6B4"/>
+        <circle cx="505" cy="290" r="11" fill="#E9ECF1" stroke="#9EA6B4"/>
+        <path d="M505 258 l6 -6 M505 290 l-5 -7" stroke="#C8392B" stroke-width="2"/>
+        <rect x="486" y="312" width="38" height="8" rx="2" fill="#C9CBC8"/>
+        <circle cx="492" cy="345" r="9" fill="#B7B9B5" stroke="#6E7276"/>
+        <circle cx="520" cy="345" r="9" fill="#B7B9B5" stroke="#6E7276"/>
+        <circle cx="506" cy="342" r="6" fill="#D2472F" stroke="#8C2F1E"/>
+        <!-- cab -->
+        <path d="M 540 190 L 660 190 L 700 245 L 700 395 L 535 395 Z" fill="url(#g-cab)"/>
+        <rect x="535" y="320" width="165" height="75" fill="url(#g-yellow)"/>
+        <path d="M 535 320 H 700" stroke="#1E3556" stroke-width="4"/>
+        <path d="M 540 190 L 660 190 L 700 245 L 535 245 Z" fill="#F3F4F1"/>
+        <rect x="548" y="250" width="60" height="55" rx="4" fill="#1F2A38"/>
+        <path d="M 622 250 H 668 L 690 280 V 305 H 622 Z" fill="#1F2A38"/>
+        <path d="M 630 256 l 40 0 l 16 22 l -56 0 z" fill="#4A6483" opacity=".6"/>
+        <text x="612" y="365" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="14" fill="#1E3556" letter-spacing="1">GLENDALE</text>
+        <text x="612" y="381" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="12" fill="#1E3556" letter-spacing="1">FIRE DEPT.</text>
+        <circle cx="660" cy="368" r="9" fill="#C8392B" stroke="#F5C12E" stroke-width="2"/>
+        <!-- light bar -->
+        <rect x="560" y="176" width="90" height="12" rx="3" fill="#2B2F36"/>
+        <rect x="562" y="178" width="14" height="8" fill="#5DB7F0"/><rect x="580" y="178" width="14" height="8" fill="#F55A3E"/>
+        <rect x="598" y="178" width="14" height="8" fill="#F55A3E"/><rect x="616" y="178" width="14" height="8" fill="#5DB7F0"/>
+        <rect x="634" y="178" width="14" height="8" fill="#F55A3E"/>
+        <!-- bumper -->
+        <rect x="690" y="372" width="28" height="24" rx="3" fill="#C9CBC8" stroke="#9EA19C"/>
+        <!-- wheels -->
+        <g id="wheel-rear" transform="translate(305,400)">
+          <circle r="36" fill="#1B1D21"/><circle r="22" fill="#D7D9D5"/><circle r="12" fill="#9EA19C"/>
+          <circle r="22" fill="none" stroke="#B7B9B5" stroke-width="3" stroke-dasharray="6 6"/>
+        </g>
+        <g transform="translate(365,400)">
+          <circle r="36" fill="#1B1D21"/><circle r="22" fill="#D7D9D5"/><circle r="12" fill="#9EA19C"/>
+        </g>
+        <g id="wheel-front" transform="translate(628,400)">
+          <circle r="36" fill="#1B1D21"/><circle r="22" fill="#D7D9D5"/><circle r="12" fill="#9EA19C"/>
+          <circle r="22" fill="none" stroke="#B7B9B5" stroke-width="3" stroke-dasharray="6 6"/>
+        </g>
+        <!-- discharge coupling on pump panel -->
+        <rect x="497" y="366" width="18" height="18" rx="3" fill="#B7B9B5" stroke="#6E7276"/>
+      </g>
+
+      <!-- attack line 150' 1 3/4" -->
+      <path id="attack-hose" d="M 506 378 C 506 440, 570 474, 720 486 C 850 496, 930 470, 1035 452" fill="none" stroke="#D2472F" stroke-width="13" stroke-linecap="round"/>
+      <path d="M 506 378 C 506 440, 570 474, 720 486 C 850 496, 930 470, 1035 452" fill="none" stroke="#E8654C" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+      <path id="water-attack" d="M 506 378 C 506 440, 570 474, 720 486 C 850 496, 930 470, 1035 452" fill="none" stroke="var(--water)" stroke-width="5" stroke-linecap="round"/>
+
+      <!-- callouts -->
+      <circle class="callout-dot" cx="735" cy="486" r="6"/>
+      <path class="callout-line" d="M 735 486 L 760 430"/>
+      <text class="callout" x="700" y="418">150′ 1¾″</text>
+      <circle class="callout-dot" cx="1068" cy="452" r="6"/>
+      <path class="callout-line" d="M 1068 452 L 1068 390"/>
+      <text class="callout" x="1068" y="378" text-anchor="middle">Smooth Bore</text>
+
+      <!-- firefighter -->
+      <g id="firefighter" transform="translate(1000,380)">
+        <ellipse cx="30" cy="132" rx="46" ry="9" fill="rgba(0,0,0,.2)"/>
+        <!-- SCBA cylinder -->
+        <rect x="-8" y="38" width="18" height="52" rx="8" fill="#3A3F46"/>
+        <rect x="-4" y="30" width="10" height="12" rx="3" fill="#F5C12E"/>
+        <!-- back leg -->
+        <path d="M 22 90 L 8 120 L 2 128 L 20 130 L 34 100 Z" fill="#B9A67A"/>
+        <rect x="6" y="112" width="18" height="6" fill="#F5C12E" transform="rotate(-62 15 115)"/>
+        <!-- front leg -->
+        <path d="M 40 88 L 56 116 L 72 124 L 78 132 L 56 132 L 46 120 L 28 104 Z" fill="#CBB88A"/>
+        <rect x="52" y="108" width="18" height="6" fill="#F5C12E" transform="rotate(50 61 111)"/>
+        <!-- boots -->
+        <path d="M 0 126 h 22 v 8 h -26 z" fill="#1B1D21"/>
+        <path d="M 58 128 h 24 v 8 h -30 z" fill="#1B1D21"/>
+        <!-- torso (turnout coat) -->
+        <path d="M 14 40 L 46 36 L 54 90 L 18 92 Z" fill="#CBB88A"/>
+        <rect x="14" y="58" width="40" height="6" fill="#F5C12E"/>
+        <rect x="14" y="66" width="40" height="3" fill="#C4C7C2"/>
+        <!-- arms toward nozzle -->
+        <path d="M 40 46 L 66 60 L 72 72 L 62 76 L 38 60 Z" fill="#B9A67A"/>
+        <path d="M 44 44 L 70 56 L 74 66 L 66 68 L 44 54 Z" fill="#CBB88A"/>
+        <rect x="58" y="52" width="6" height="14" fill="#F5C12E" transform="rotate(-62 61 59)"/>
+        <!-- gloves -->
+        <circle cx="72" cy="70" r="5" fill="#2B2F36"/>
+        <circle cx="66" cy="74" r="5" fill="#2B2F36"/>
+        <!-- head / hood / mask -->
+        <circle cx="34" cy="22" r="12" fill="#2B2F36"/>
+        <circle cx="42" cy="24" r="5" fill="#4A6483"/>
+        <!-- helmet -->
+        <path d="M 16 20 C 18 4, 50 2, 52 20 Z" fill="#F5C12E"/>
+        <path d="M 10 21 C 24 14, 50 14, 60 21 C 50 26, 20 26, 10 21 Z" fill="#E7B01E"/>
+        <rect x="26" y="8" width="16" height="4" rx="2" fill="#1E3556"/>
+        <!-- nozzle (smooth bore) -->
+        <g transform="translate(66,70) rotate(-8)">
+          <rect x="0" y="-5" width="16" height="10" rx="2" fill="#2B2F36"/>
+          <rect x="14" y="-4" width="14" height="8" rx="1" fill="#6E7276"/>
+          <rect x="26" y="-3" width="8" height="6" fill="#B7B9B5"/>
+        </g>
+      </g>
+
+      <!-- water stream from nozzle -->
+      <g id="stream" transform="translate(1100,438)">
+        <path d="M 0 0 C 30 -6, 60 -22, 100 -40 L 100 -12 L 40 12 Z" fill="url(#g-stream)"/>
+        <path class="drop" d="M 2 0 C 30 -10, 60 -22, 98 -36" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round" opacity=".9"/>
+        <path class="drop d2" d="M 2 3 C 30 -2, 60 -14, 100 -26" stroke="#DDF1FD" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".8"/>
+        <path class="drop d3" d="M 2 -3 C 30 -14, 60 -30, 100 -44" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>
+        <circle class="mist" cx="85" cy="-30" r="22" fill="url(#g-mist)"/>
+        <circle class="mist m2" cx="98" cy="-18" r="18" fill="url(#g-mist)"/>
+        <circle class="mist m3" cx="70" cy="-38" r="14" fill="url(#g-mist)"/>
+      </g>
+    </svg>
+  </section>
+
+  <section class="panel" aria-labelledby="panel-title">
+    <div class="panel-head">
+      <div class="panel-title" id="panel-title">Pump Discharge Pressure <span>Discharge 1 · 150′ 1¾″ · smooth bore</span></div>
+      <div class="formula"><b>PDP</b> = NP + FL + EL + AP</div>
+    </div>
+
+    <form class="row" id="calc" novalidate>
+      <div class="field">
+        <label for="np">NP <small>nozzle</small></label>
+        <input id="np" name="np" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off" autofocus>
+      </div>
+      <div class="op">+</div>
+      <div class="field">
+        <label for="fl">FL <small>friction</small></label>
+        <input id="fl" name="fl" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
+      </div>
+      <div class="op">+</div>
+      <div class="field">
+        <label for="el">EL <small>elevation</small></label>
+        <input id="el" name="el" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
+      </div>
+      <div class="op">+</div>
+      <div class="field">
+        <label for="ap">AP <small>appliance</small></label>
+        <input id="ap" name="ap" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
+      </div>
+      <div class="op eq">=</div>
+      <div class="pdp">
+        <div class="lbl">PDP</div>
+        <div class="val"><span id="total">—</span><small>psi</small></div>
+      </div>
+    </form>
+
+    <div class="actions">
+      <button type="button" class="charge" id="charge">Charge the line <kbd>Enter</kbd></button>
+      <button type="button" class="reset" id="reset">Reset</button>
+      <span class="hint" id="hint">Enter all four values, then press Enter.</span>
+    </div>
+  </section>
+
+  <p class="notes"><b>How it grades.</b> Each of the four values is checked against the answer key for this evolution, and the total must match the pump discharge pressure. A correct answer charges the line and the nozzle flows; a wrong one asks you to rework the numbers.</p>
+</div>
+
+<script>
+  // Scenario data. A future upload can replace this object (or an array of them).
+  const scenario = {
+    id: 'glendale-e150-150ft-175-smoothbore',
+    hose: '150′ of 1¾″',
+    nozzle: 'Smooth bore',
+    answers: { np: 50, fl: 57, el: 0, ap: 0 }
+  };
+  const keys = ['np', 'fl', 'el', 'ap'];
+  const inputs = Object.fromEntries(keys.map(k => [k, document.getElementById(k)]));
+  const totalEl = document.getElementById('total');
+  const scene = document.getElementById('scene');
+  const verdict = document.getElementById('verdict');
+  const hint = document.getElementById('hint');
+
+  // Prime the water paths so they can "fill" along the hose.
+  for (const id of ['water-supply', 'water-attack']) {
+    const p = document.getElementById(id);
+    const len = p.getTotalLength();
+    p.style.strokeDasharray = len;
+    p.style.strokeDashoffset = len;
+  }
+
+  function read(k) {
+    const v = inputs[k].value.trim();
+    return v === '' ? null : Number(v);
+  }
+  function total() {
+    const vals = keys.map(read);
+    if (vals.some(v => v === null || Number.isNaN(v))) return null;
+    return vals.reduce((a, b) => a + b, 0);
+  }
+  function fmt(n) {
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  }
+  function refresh() {
+    const t = total();
+    totalEl.textContent = t === null ? '—' : fmt(t);
+  }
+
+  function showVerdict(kind, title, detail) {
+    verdict.className = 'verdict ' + kind;
+    verdict.innerHTML = '';
+    verdict.append(title);
+    if (detail) {
+      const s = document.createElement('small');
+      s.textContent = detail;
+      verdict.append(s);
+    }
+    requestAnimationFrame(() => {
+      verdict.classList.add('show');
+      if (kind === 'bad') verdict.classList.add('shake');
+    });
+  }
+  function hideVerdict() { verdict.classList.remove('show', 'shake'); }
+
+  function check() {
+    keys.forEach(k => inputs[k].classList.remove('wrong'));
+    const t = total();
+    if (t === null) {
+      hint.textContent = 'All four values are needed. Enter 0 where there is none.';
+      keys.filter(k => read(k) === null).forEach(k => inputs[k].classList.add('wrong'));
+      return;
+    }
+    const expected = keys.reduce((a, k) => a + scenario.answers[k], 0);
+    const allMatch = keys.every(k => read(k) === scenario.answers[k]);
+    if (allMatch && t === expected) {
+      scene.classList.add('charged');
+      showVerdict('good', 'Correct — PDP ' + fmt(t) + ' psi', 'Line charged. Water is flowing.');
+      hint.textContent = 'Nice work. Reset to run it again.';
+    } else {
+      scene.classList.remove('charged');
+      showVerdict('bad', 'Incorrect', 'Rework your values and try again.');
+      hint.textContent = 'That is not the pump discharge pressure for this line.';
+    }
+  }
+
+  function reset() {
+    keys.forEach(k => { inputs[k].value = ''; inputs[k].classList.remove('wrong'); });
+    scene.classList.remove('charged');
+    hideVerdict();
+    hint.textContent = 'Enter all four values, then press Enter.';
+    refresh();
+    inputs.np.focus();
+  }
+
+  keys.forEach(k => {
+    inputs[k].addEventListener('input', () => {
+      inputs[k].classList.remove('wrong');
+      if (scene.classList.contains('charged')) { scene.classList.remove('charged'); hideVerdict(); }
+      refresh();
+    });
+  });
+  document.getElementById('calc').addEventListener('submit', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); check(); }
+    if (e.key === 'Escape') reset();
+  });
+  document.getElementById('charge').addEventListener('click', check);
+  document.getElementById('reset').addEventListener('click', reset);
+  refresh();
+</script>
