@@ -378,12 +378,13 @@
     elevation: { psiPerFoot: 0.5 },
     appliances: {
       'none':        { label: 'None', psi: 0 },
-      'gated-wye':   { label: 'Gated wye', psi: 10, note: 'add 10 psi if flow through it exceeds 350 gpm' },
+      // Gated wye: no loss under 350 gpm through it, 10 psi over
+      'gated-wye':   { label: 'Gated wye', psi: 0, over: { gpm: 350, psi: 10 }, note: '10 psi only when flow through it exceeds 350 gpm' },
       'ladder':      { label: 'Ladder', psi: 40 },
       'stang-gun':   { label: 'Stang gun', psi: 25 },
       'foam-eductor':{ label: 'Foam eductor', psi: 0, note: 'operating pressure 200 psi, nozzle set at 95 gpm' },
       'pump-to-pump':{ label: 'Pump to pump', psi: 20 },
-      'blitz':       { label: 'Blitz', psi: 10, note: 'value not on the sheet; treated like a gated wye until confirmed' },
+      'blitz':       { label: 'Blitz used as a gated wye', psi: 0, over: { gpm: 350, psi: 10 }, note: 'same rule as a gated wye' },
     },
   };
   function handlineFLper100(gpm, size) { return (gpm * REF.hs[size].hs) / 10 - 10; }
@@ -405,7 +406,9 @@
       return { seg, size, master, per100, fl: per100 * seg.length / 100 };
     });
     const fl = worked.reduce((a, x) => a + x.fl, 0);
-    const ap = REF.appliances[line.appliance || 'none'].psi;
+    const appl = REF.appliances[line.appliance || 'none'];
+    // Flow-dependent appliances (gated wye): the loss applies only above the threshold
+    const ap = appl.over && noz.gpm > appl.over.gpm ? appl.over.psi : appl.psi;
     const elFt = line.elevationFt || 0;
     const el = elFt * REF.elevation.psiPerFoot;
     // Relay: the next engine is in service, so this pump only feeds its intake. No nozzle pressure,
@@ -418,7 +421,7 @@
           ? [`NP 0 psi: ${line.relay} is in service, so this pump only feeds ${line.relay}'s intake. Everything past ${line.relay} is ${line.relay}'s to pump.`,
              `GPM comes from what the ladder is flowing: ${noz.label}, ${noz.gpm} gpm.`]
           : [`NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`]),
-        ...(line.noHose ? [`FL 0 psi: the ${line.name.toLowerCase()} is piped on the engine, no hose.`] : [
+        ...(line.noHose ? [`FL 0 psi: the ${(line.name || 'deck gun').toLowerCase()} is piped on the engine, no hose.`] : [
           ...(nLines > 1 ? [`${nLines} × ${worked[0].size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
           ...worked.flatMap(({ seg, size, master, per100, fl: segFl }) => [
             master
@@ -428,7 +431,9 @@
           ]),
           ...(worked.length > 1 ? [`FL total = ${worked.map(x => fmt(x.fl)).join(' + ')} = ${fmt(fl)} psi (same ${fmt(flowGpm)} gpm flows through every section)`] : []),
         ]),
-        `AP ${fmt(ap)} psi (${REF.appliances[line.appliance || 'none'].label.toLowerCase()})`,
+        appl.over
+          ? `AP ${fmt(ap)} psi (${appl.label.toLowerCase()}: ${noz.gpm} gpm is ${noz.gpm > appl.over.gpm ? 'over' : 'under'} ${appl.over.gpm} gpm)`
+          : `AP ${fmt(ap)} psi (${appl.label.toLowerCase()})`,
         line.relay && !elFt
           ? `EL 0 psi: ${line.relay} sits at grade. The ladder's elevation is ${line.relay}'s to pump.`
           : `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
@@ -795,7 +800,7 @@
     const noz = Object.values(REF.nozzles).filter(n => n.group !== 'tips').map(n => `<tr><td>${esc(n.label)}</td><td>${n.np} psi · ${n.gpm}${n.gpmMax ? '–' + n.gpmMax : ''} gpm</td></tr>`).join('');
     const tips = Object.values(REF.nozzles).filter(n => n.group === 'tips').map(n => `<tr><td>${esc(n.short)}</td><td>${n.np} psi · ${n.gpm} gpm</td></tr>`).join('');
     const hs = Object.values(REF.hs).map(h => `<tr><td>${h.label} handline</td><td>HS = ${h.hs}</td></tr>`).join('');
-    const ap = Object.values(REF.appliances).filter(a => a.label !== 'None').map(a => `<tr><td>${esc(a.label)}${a.note ? `<br><span style="color:var(--ink-soft);font-size:12.5px">${esc(a.note)}</span>` : ''}</td><td>${a.psi ? a.psi + ' psi' : '—'}</td></tr>`).join('');
+    const ap = Object.values(REF.appliances).filter(a => a.label !== 'None').map(a => `<tr><td>${esc(a.label)}${a.note ? `<br><span style="color:var(--ink-soft);font-size:12.5px">${esc(a.note)}</span>` : ''}</td><td>${a.over ? `${a.psi} psi · ${a.over.psi} psi over ${a.over.gpm} gpm` : a.psi ? a.psi + ' psi' : '—'}</td></tr>`).join('');
     $('ref').innerHTML = `
       <div><h3>Pump discharge pressure</h3><p class="eq">PDP = NP + FL + AP ± EL</p>
         <h3 style="margin-top:14px">Nozzle pressure</h3><table>${noz}</table>

@@ -27,11 +27,11 @@ The user enters every value for each line. The app totals the PDP live. Pressing
 | 6 · Handline | 200′ 1¾″ smooth bore | 50 | 76 | 0 | 0 | **126** |
 | 7 · Deck gun | Fog master stream on E151, no hose, Stang gun | 100 | 0 | 25 | 0 | **125** |
 | 7 · Line 1 | 150′ 1¾″ smooth bore | 50 | 57 | 0 | 0 | **107** |
-| 7 · Line 2 | 200′ 2½″ into a Blitz, then 150′ 1¾″ smooth bore | 50 | 69 | 10 | 0 | **129** |
+| 7 · Line 2 | 200′ 2½″ into a Blitz, then 150′ 1¾″ smooth bore | 50 | 69 | 0 | 0 | **119** |
 
-Evolution 7, line 2: the same 160 gpm flows through both sections, so FL is 12 on the 2½″ ((160 × 1) ÷ 10 − 10 = 6 per 100′) plus 57 on the 1¾″. **The Blitz appliance value of 10 psi is provisional**: it is not on the sheet and is treated like a gated wye until confirmed. Change `REF.appliances.blitz.psi` in `index.html` to correct it; the engine PDP for evolution 7 follows from it.
+Evolution 7, line 2: the same 160 gpm flows through both sections, so FL is 12 on the 2½″ ((160 × 1) ÷ 10 − 10 = 6 per 100′) plus 57 on the 1¾″. The Blitz is used as a gated wye, and a gated wye costs nothing under 350 gpm (10 psi over), so AP is 0.
 
-On a multi-line evolution the app also asks for the **Engine PDP**, which must be the highest line's pressure (evolutions 3 and 6: 126; evolution 7: 129 with the provisional Blitz value). The lower lines are gated down at their discharges.
+On a multi-line evolution the app also asks for the **Engine PDP**, which must be the highest line's pressure (evolutions 3 and 6: 126; evolution 7: 125, the deck gun). The lower lines are gated down at their discharges.
 
 Friction loss for a 1¾″ smooth bore handline at 160 gpm: (160 × 3) ÷ 10 − 10 = 38 psi per 100′.
 
@@ -51,7 +51,7 @@ Encoded in the `REF` object in `index.html`, from the Glendale hydraulics sheet:
 - Series hose (`hose: [{length, size}, …]` on a line): FL is figured per section at the line's gpm and summed.
 - Deck gun (`noHose: true` on a line): no friction loss; NP from the tip plus the Stang gun appliance.
 - Relay pumping (`relay: 'E152'` on a line): the next engine is in service, so the pump only feeds its intake. NP 0, FL on the line between the engines at the downstream flow, AP 20 pump to pump, EL 0.
-- Appliance losses: gated wye 10, ladder 40, Stang gun 25, pump to pump 20; foam eductor operates at 200 psi.
+- Appliance losses: gated wye 0 under 350 gpm and 10 over (a Blitz used as a wye follows the same rule), ladder 40, Stang gun 25, pump to pump 20; foam eductor operates at 200 psi.
 
 The answers are computed from these tables, not hard-coded, so adding a line with a different length, hose size, nozzle or appliance only needs a new entry in `SCENARIOS`.
 
