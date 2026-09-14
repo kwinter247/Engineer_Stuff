@@ -31,7 +31,6 @@ The user enters every value for each line. The app totals the PDP live. Pressing
 | 8 | Standpipe: 100′ 2½″ to the FDC, 150′ 1¾″ smooth bore on the 3rd floor | 50 | 63 | 0 | 10 | **123** |
 | 9 | E150, 300′ 2½″ to a high pressure fog Blitz (500 gpm) | 100 | 120 | 0 | 0 | **220** |
 | 10 | E156 supplying a ladder through two 100′ 4″ lines, 1¾″ stack tip (800 gpm) 100′ up | 80 | 3 | 40 | 50 | **173** |
-| 11 | E157 relaying 300′ of 4″ to E153, whose deck gun flows a 1¾″ tip (800 gpm) | 0 | 42 | 20 | 0 | **62** |
 
 Evolution 10: two supply lines split the 800 gpm to 400 each, so FL per 100′ is 4 × 3 ÷ 4 = 3 psi, added once.
 
@@ -61,8 +60,6 @@ Encoded in the `REF` object in `index.html`, from the Glendale hydraulics sheet:
 - Appliance losses: gated wye 0 under 350 gpm and 10 over (a Blitz used as a wye follows the same rule), ladder 40, Stang gun 25, pump to pump 20; foam eductor operates at 200 psi.
 
 The answers are computed from these tables, not hard-coded, so adding a line with a different length, hose size, nozzle or appliance only needs a new entry in `SCENARIOS`.
-
-Evolution 11's scene is a composite built from the earlier photos (the deck gun engine from evolution 6 and the hydrant-fed engine from evolution 4) with the 4″ line and callouts drawn in, so the hose path is known exactly.
 
 ## Running it
 
