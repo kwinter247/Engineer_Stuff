@@ -572,13 +572,13 @@
       }],
     },
     {
-      id: 'e5', title: 'Evolution 5', sub: 'E151 relaying to E152, 450′ 4″; E152 feeds Ladder 152', image: 'scene-relay.jpg', verdict: 'bottom',
+      id: 'e5', title: 'Evolution 5', sub: 'E151 relaying 450′ + 50′ of 4″ to E152, which feeds a ladder', image: 'scene-relay.jpg',
       lines: [{
-        name: 'E151 to E152', desc: 'relay · 450′ 4″ · ladder flowing a 1½″ tip',
-        length: 450, size: '4', nozzle: 'tip-150', relay: 'E152', appliance: 'pump-to-pump', elevationFt: 0,
-        // 450′ from E151 to E152, then E152's two 200′ lines to the ladder, then the waterway to the tip
-        path: 'M 1536 758 L 1541 753 L 1541 733 L 1536 713 L 1518 689 L 1486 660 L 1455 640 L 1425 627 L 1338 599 L 1295 574 L 1273 555 L 1259 531 L 1253 493 L 1259 490 L 1289 496 M 923 512 L 860 528 L 802 534 L 734 534 L 673 529 L 610 518 L 565 505 L 557 497 M 914 539 L 873 559 L 820 573 L 741 581 L 664 581 L 585 575 L 518 564 L 437 536 L 403 519 M 180 480 L 585 70 L 600 60',
-        tip: [600, 60], stream: 'arc', arc: { c: [254, 40], end: [560, 285] }, mask: '0,0 0,0 0,0',
+        name: 'E151 to E152', desc: 'relay · 500′ of 4″ · ladder flowing a 1½″ tip',
+        hose: [{ length: 450, size: '4' }, { length: 50, size: '4' }], nozzle: 'tip-150', relay: 'E152', appliance: 'pump-to-pump', elevationFt: 0,
+        // E151's 50′ to the manifold, the 450′ up to E152, E152's two 200′ lines to the ladder, then the waterway to the tip
+        path: 'M 1296 769 L 1325 783 L 1351 791 L 1389 797 L 1420 797 L 1521 774 L 1536 753 L 1540 744 M 1538 759 L 1536 732 L 1529 706 L 1486 660 L 1461 644 L 1426 627 L 1377 611 L 1332 591 L 1290 555 L 1255 515 M 924 506 L 917 515 L 868 528 L 817 533 L 753 535 L 635 523 L 578 510 L 562 504 L 557 498 M 938 527 L 879 557 L 842 569 L 777 579 L 701 582 L 615 578 L 534 568 L 497 558 L 437 536 L 404 520 M 200 520 L 560 70 L 597 58',
+        tip: [597, 58], stream: 'arc', arc: { c: [250, 20], end: [480, 230] }, mask: '0,0 0,0 0,0',
       }],
     },
     {

@@ -22,7 +22,7 @@ The user enters every value for each line. The app totals the PDP live. Pressing
 | 3 · Line 1 | 150′ 1¾″ smooth bore | 50 | 57 | 0 | 0 | **107** |
 | 3 · Line 2 | 200′ 1¾″ smooth bore | 50 | 76 | 0 | 0 | **126** |
 | 4 | E159 supplying Ladder 152 through 450′ of 4″, 1⅜″ stack tip 100′ up | 80 | 22.5 | 40 | 50 | **192.5** |
-| 5 | E151 relaying 450′ of 4″ to E152, which feeds Ladder 152 (1½″ tip, 600 gpm) | 0 | 33.75 | 20 | 0 | **53.75** |
+| 5 | E151 relaying 450′ + 50′ of 4″ to E152, which feeds a ladder (1½″ tip, 600 gpm) | 0 | 37.5 | 20 | 0 | **57.5** |
 | 6 · Deck gun | 2″ stack tip on E151, no hose, Stang gun | 80 | 0 | 25 | 0 | **105** |
 | 6 · Handline | 200′ 1¾″ smooth bore | 50 | 76 | 0 | 0 | **126** |
 | 7 · Deck gun | Fog master stream on E151, no hose, Stang gun | 100 | 0 | 25 | 0 | **125** |
