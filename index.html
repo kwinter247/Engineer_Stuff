@@ -295,7 +295,7 @@
   .term.total .val small { font-size: 12px; color: var(--panel-muted); font-weight: 500; }
 
   .actions { display: grid; gap: 10px; }
-  .multi .actions { grid-template-columns: auto auto auto 1fr; align-items: center; }
+  @media (min-width: 700px) { .multi .actions { grid-template-columns: auto auto auto 1fr; align-items: center; } }
   button {
     font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
     border-radius: 4px; padding: 10px 20px; cursor: pointer; border: 1px solid transparent;
@@ -309,15 +309,16 @@
   .reset:hover { color: var(--panel-text); border-color: var(--panel-muted); }
   .teach { background: transparent; color: var(--water); border-color: rgba(93,183,240,.45); font-size: 17px; padding: 8px 16px; }
   .nav { display: grid; gap: 8px; border-top: 1px solid var(--panel-edge); padding-top: 10px; margin-top: 2px; }
-  .multi .nav { grid-template-columns: 1fr 1fr; }
+  @media (min-width: 700px) { .multi .nav { grid-template-columns: 1fr 1fr; } }
   .next {
-    background: var(--navy); color: #fff; border-color: #2B4A78; width: 100%;
+    background: var(--navy); color: #fff; border-color: #2B4A78; width: 100%; min-width: 0; overflow: hidden;
     justify-content: space-between; text-align: left; padding: 11px 16px;
   }
+  .next > span:first-child { min-width: 0; }
   .next.prev { background: transparent; color: var(--panel-text); border-color: #3A414D; flex-direction: row-reverse; text-align: right; }
   .next.prev:hover { border-color: var(--panel-muted); background: rgba(255,255,255,.04); }
   .next:hover { background: #274571; }
-  .next small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 0; text-transform: none; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .next small { display: block; font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 0; text-transform: none; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .next .arrow { font-family: "Barlow", sans-serif; font-size: 22px; line-height: 1; }
   .teach:hover { background: rgba(93,183,240,.12); border-color: var(--water); }
   .work h3 .tag { font-size: 11px; letter-spacing: .1em; color: var(--water); margin-left: 8px; }
@@ -327,7 +328,7 @@
     padding: 1px 6px; letter-spacing: 0;
   }
   .hint { color: var(--panel-muted); font-size: 13.5px; text-align: center; margin: 0; }
-  .multi .hint { text-align: left; }
+  @media (min-width: 700px) { .multi .hint { text-align: left; } }
 
   /* worked solution */
   .work { display: none; border-top: 1px solid var(--panel-edge); padding-top: 12px; gap: 12px; }
