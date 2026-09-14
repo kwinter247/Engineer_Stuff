@@ -308,11 +308,14 @@
   .reset { background: transparent; color: var(--panel-muted); border-color: #3A414D; font-size: 17px; padding: 8px 16px; }
   .reset:hover { color: var(--panel-text); border-color: var(--panel-muted); }
   .teach { background: transparent; color: var(--water); border-color: rgba(93,183,240,.45); font-size: 17px; padding: 8px 16px; }
+  .nav { display: grid; gap: 8px; border-top: 1px solid var(--panel-edge); padding-top: 10px; margin-top: 2px; }
+  .multi .nav { grid-template-columns: 1fr 1fr; }
   .next {
     background: var(--navy); color: #fff; border-color: #2B4A78; width: 100%;
     justify-content: space-between; text-align: left; padding: 11px 16px;
-    border-top: 1px solid var(--panel-edge); margin-top: 2px;
   }
+  .next.prev { background: transparent; color: var(--panel-text); border-color: #3A414D; flex-direction: row-reverse; text-align: right; }
+  .next.prev:hover { border-color: var(--panel-muted); background: rgba(255,255,255,.04); }
   .next:hover { background: #274571; }
   .next small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 0; text-transform: none; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .next .arrow { font-family: "Barlow", sans-serif; font-size: 22px; line-height: 1; }
@@ -391,7 +394,10 @@
 
       <div class="work" id="work"></div>
 
-      <button type="button" class="next" id="next"></button>
+      <div class="nav">
+        <button type="button" class="next prev" id="prev"></button>
+        <button type="button" class="next" id="next"></button>
+      </div>
     </section>
   </div>
 
@@ -942,10 +948,12 @@
     layout.classList.toggle('multi', current.lines.length > 1);
     buildScene(current);
     buildPanel(current);
-    const nextIdx = (i + 1) % SCENARIOS.length;
-    const nxt = SCENARIOS[nextIdx];
+    const nextIdx = (i + 1) % SCENARIOS.length, prevIdx = (i - 1 + SCENARIOS.length) % SCENARIOS.length;
+    const nxt = SCENARIOS[nextIdx], prv = SCENARIOS[prevIdx];
     $('next').innerHTML = `<span>Next evolution<br><small>${esc(nxt.title)} · ${esc(nxt.sub)}</small></span><span class="arrow">→</span>`;
     $('next').onclick = () => { load(nextIdx); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    $('prev').innerHTML = `<span>Previous evolution<br><small>${esc(prv.title)} · ${esc(prv.sub)}</small></span><span class="arrow">←</span>`;
+    $('prev').onclick = () => { load(prevIdx); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     reset();
   }
 
