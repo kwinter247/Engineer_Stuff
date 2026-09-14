@@ -430,8 +430,8 @@
       'tip-1875': { label: '1⅞″ stack tip, master stream', short: '1⅞″ stack tip', np: 80, gpm: 900, group: 'tips' },
       'tip-2':    { label: '2″ stack tip, master stream',  short: '2″ stack tip',  np: 80, gpm: 1000, group: 'tips' },
       'fog-master':{ label: 'Fog master stream',        short: 'fog master stream', np: 100, gpm: 1000 },
-      'penetrating':{ label: 'Penetrating nozzle',      np: 100, gpm: 95 },
-      'blitz-fog-low':  { label: 'Blitz fog, low pressure',  np: 55,  gpm: 500 },
+      'penetrating':{ label: 'Penetrating nozzle',      short: 'penetrating nozzle', np: 100, gpm: 95 },
+      'blitz-fog-low':  { label: 'Blitz fog, low pressure',  short: 'low pressure fog Blitz', np: 55,  gpm: 500 },
       'blitz-fog-high': { label: 'Blitz fog, high pressure', short: 'high pressure Blitz', np: 100, gpm: 500 },
       'blitz-sb-1':     { label: 'Blitz smooth bore 1″',      np: 50,  gpm: 300 },
       'blitz-sb-125':   { label: 'Blitz smooth bore 1¼″',     np: 50,  gpm: 400 },
@@ -469,16 +469,21 @@
     const nLines = line.supplyLines || 1;
     const flowGpm = noz.gpm / nLines;
     const q = flowGpm / 100;
+    // A wye: the trunk (marked trunk: true) carries branches × the nozzle flow; FL is added for one branch only
+    const branches = line.branches || 1;
+    const trunkGpm = flowGpm * branches;
     const worked = segs.map(seg => {
       const size = REF.hs[seg.size];
       const master = size.formula === 'master';
-      const per100 = master ? supplyFLper100(flowGpm, size.hs) : handlineFLper100(flowGpm, seg.size);
-      return { seg, size, master, per100, fl: per100 * seg.length / 100 };
+      const gpm = seg.trunk ? trunkGpm : flowGpm;
+      const per100 = master ? supplyFLper100(gpm, size.hs) : handlineFLper100(gpm, seg.size);
+      return { seg, size, master, gpm, per100, fl: per100 * seg.length / 100 };
     });
     const fl = worked.reduce((a, x) => a + x.fl, 0);
     const appl = REF.appliances[line.appliance || 'none'];
     // Flow-dependent appliances (gated wye): the loss applies only above the threshold
-    const ap = appl.over && noz.gpm > appl.over.gpm ? appl.over.psi : appl.psi;
+    const applGpm = noz.gpm * branches;   // flow through the appliance
+    const ap = appl.over && applGpm > appl.over.gpm ? appl.over.psi : appl.psi;
     const elFt = line.elevationFt || 0;
     // A floor number means a building: 5 psi for every floor above the ground floor
     const floorsUp = line.floor ? line.floor - 1 : 0;
@@ -495,16 +500,17 @@
           : [`NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`]),
         ...(line.noHose ? [`FL 0 psi: the ${(line.name || 'deck gun').toLowerCase()} is piped on the engine, no hose.`] : [
           ...(nLines > 1 ? [`${nLines} × ${worked[0].size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
-          ...worked.flatMap(({ seg, size, master, per100, fl: segFl }) => [
+          ...(branches > 1 ? [`${appl.label} feeds ${branches} lines at ${noz.gpm} gpm each, so ${trunkGpm} gpm flows through the trunk. Each branch is the same, so FL is added for one branch only.`] : []),
+          ...worked.flatMap(({ seg, size, master, gpm, per100, fl: segFl }) => [
             master
-              ? `FL/100′ ${size.label} = Q × (Q − 1) ÷ HS = ${fmt(q)} × ${fmt(q - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${fmt(flowGpm)} ÷ 100, HS ${size.hs} for ${size.label})`
-              : `FL/100′ ${size.label} = (${fmt(flowGpm)} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
-            `FL ${size.label} = ${fmt(per100)} × ${seg.length}′ ÷ 100 = ${fmt(segFl)} psi${nLines > 1 ? ' (one line)' : ''}`,
+              ? `FL/100′ ${size.label} = Q × (Q − 1) ÷ HS = ${fmt(gpm / 100)} × ${fmt(gpm / 100 - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${fmt(gpm)} ÷ 100, HS ${size.hs} for ${size.label})`
+              : `FL/100′ ${size.label} = (${fmt(gpm)} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
+            `FL ${size.label} = ${fmt(per100)} × ${seg.length}′ ÷ 100 = ${fmt(segFl)} psi${nLines > 1 ? ' (one line)' : seg.trunk ? ' (trunk)' : branches > 1 ? ' (one branch)' : ''}`,
           ]),
-          ...(worked.length > 1 ? [`FL total = ${worked.map(x => fmt(x.fl)).join(' + ')} = ${fmt(fl)} psi (same ${fmt(flowGpm)} gpm flows through every section)`] : []),
+          ...(worked.length > 1 ? [`FL total = ${worked.map(x => fmt(x.fl)).join(' + ')} = ${fmt(fl)} psi${branches > 1 ? '' : ` (same ${fmt(flowGpm)} gpm flows through every section)`}`] : []),
         ]),
         appl.over
-          ? `AP ${fmt(ap)} psi (${appl.label.toLowerCase()}: ${noz.gpm} gpm is ${noz.gpm > appl.over.gpm ? 'over' : 'under'} ${appl.over.gpm} gpm)`
+          ? `AP ${fmt(ap)} psi (${appl.label.toLowerCase()}: ${applGpm} gpm is ${applGpm > appl.over.gpm ? 'over' : 'under'} ${appl.over.gpm} gpm)`
           : `AP ${fmt(ap)} psi (${appl.label.toLowerCase()})`,
         line.relay && !elFt
           ? `EL 0 psi: ${line.relay} sits at grade. Any elevation past ${line.relay} is ${line.relay}'s to pump.`
@@ -632,6 +638,40 @@
         tip: [1640, 57], stream: 'arc', arc: { c: [35, -50], end: [60, -90] }, mask: '0,0 0,0 0,0',
       }],
     },
+    {
+      id: 'e11', title: 'Evolution 11', sub: 'E156: 350′ 1¾″ penetrating nozzle, and 200′ 2½″ to a gated wye with two 150′ 1¾″', image: 'scene-wye.jpg',
+      lines: [{
+        name: 'Line 1', desc: '350′ 1¾″ · penetrating nozzle',
+        length: 350, size: '1.75', nozzle: 'penetrating', appliance: 'none', elevationFt: 0,
+        // leaves the panel behind the cab, reappears at the front bumper
+        path: 'M 445 385 L 550 390 L 650 386 L 752 379 L 820 382 L 979 355 L 1290 334 L 1316 328 L 1348 313 L 1374 293 L 1392 274 L 1460 240',
+        tip: [1630, 225], streamScale: .35, masks: ['440,360 750,360 750,480 440,480', '1375,255 1470,245 1475,350 1380,350'],
+      }, {
+        name: 'Wye line', desc: '200′ 2½″ → gated wye → two 150′ 1¾″ · smooth bores',
+        hose: [{ length: 200, size: '2.5', trunk: true }, { length: 150, size: '1.75' }], branches: 2, nozzle: 'sb-175', appliance: 'gated-wye', elevationFt: 0,
+        path: 'M 442 405 L 447 447 L 455 462 L 463 504 L 480 542 L 514 587 L 548 616 L 600 641 L 661 662 L 678 656 L 700 680 M 773 689 L 781 685 L 811 688 L 856 683 L 994 651 L 1055 640 L 1276 621 L 1312 611 L 1350 596 L 1394 571 L 1403 561 L 1470 530 M 756 713 L 766 725 L 803 746 L 837 758 L 873 765 L 920 770 L 1027 770 L 1083 774 L 1308 815 L 1356 815 L 1407 804 L 1470 770',
+        tips: [[1525, 527], [1525, 770]], masks: ['1395,545 1490,535 1495,635 1400,635', '1395,790 1490,780 1495,890 1400,890'],
+      }],
+    },
+    {
+      id: 'e12', title: 'Evolution 12', sub: 'E154: 400′ 4″ up 30′ to a Blitz with low pressure fog', image: 'scene-tank.jpg',
+      lines: [{
+        name: 'Blitz line', desc: '400′ 4″ · low pressure fog Blitz · 30′ up',
+        length: 400, size: '4', nozzle: 'blitz-fog-low', appliance: 'none', elevationFt: 30,
+        path: 'M 416 693 L 426 723 L 441 753 L 469 778 L 506 792 L 551 796 L 602 791 L 650 730 L 704 629 L 708 619 L 733 602 L 781 560 L 885 493 L 918 455 L 933 428 L 946 384 L 949 353 L 947 286 L 953 260 L 962 246 L 976 234 L 1019 213 L 1080 190',
+        tip: [1130, 145], streamScale: .9, mask: '0,0 0,0 0,0',
+      }],
+    },
+    {
+      id: 'e13', title: 'Evolution 13', sub: 'E151 supplying a ladder through two 100′ 4″ lines, fog nozzle 60′ up', image: 'scene-chain.jpg',
+      lines: [{
+        name: 'E151 to ladder', desc: 'two 100′ 4″ supply lines · fog master stream, 60′ up',
+        length: 100, size: '4', supplyLines: 2, nozzle: 'fog-master', appliance: 'ladder', elevationFt: 60,
+        // both lines leave the panel behind the cab, reappear at the front, then the waterway up the ladder
+        path: 'M 612 365 L 750 400 L 900 425 L 984 437 L 992 432 L 1065 414 L 1095 402 L 1141 370 L 1157 364 L 1162 355 M 620 385 L 760 430 L 900 455 L 994 466 L 1057 455 L 1109 438 L 1122 429 L 1136 425 L 1163 404 L 1185 370 M 1313 253 L 1470 60 L 1490 40',
+        tip: [1490, 40], stream: 'arc', arc: { c: [60, -30], end: [130, -12] }, mask: '600,300 982,300 982,480 600,480',
+      }],
+    },
   ];
   const IMG_W = 1672, IMG_H = 941;
   const TERMS = [
@@ -682,7 +722,8 @@
           <stop offset="0" stop-color="#FFFFFF" stop-opacity=".7"/><stop offset="1" stop-color="#BFE4FA" stop-opacity="0"/>
         </radialGradient>`;
     s.lines.forEach((l, i) => {
-      defs += `<mask id="m-leg-${i}"><rect width="${IMG_W}" height="${IMG_H}" fill="#fff"/><polygon points="${l.mask}" fill="#000"/></mask>`;
+      const polys = (l.masks || [l.mask]).map(m => `<polygon points="${m}" fill="#000"/>`).join('');
+      defs += `<mask id="m-leg-${i}"><rect width="${IMG_W}" height="${IMG_H}" fill="#fff"/>${polys}</mask>`;
       if (l.arc) defs += `<linearGradient id="g-arc-${i}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${l.arc.end[0]}" y2="${l.arc.end[1]}">
           <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
           <stop offset=".45" stop-color="#CFEAFB" stop-opacity=".75"/>
@@ -698,13 +739,13 @@
           <path class="water core" d="${l.path}" fill="none" stroke="#2C8FD6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
           <path class="water hi" d="${l.path}" fill="none" stroke="#9FDBFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
         </g>
-        ${l.stream === 'arc' ? (() => {
+        ${(l.tips || [l.tip]).map(tip => l.stream === 'arc' ? (() => {
         const [cx, cy] = l.arc.c, [ex, ey] = l.arc.end;
         const q = (dx, dy) => `M 0 ${dy} Q ${cx} ${cy + dy} ${ex + dx} ${ey + dy}`;
         const at = t => [2 * (1 - t) * t * cx + t * t * ex, 2 * (1 - t) * t * cy + t * t * ey];
         const L = Math.hypot(ex, ey), [m1x, m1y] = at(.8), [m2x, m2y] = at(.93), [m3x, m3y] = at(.66);
         return `
-        <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]})">
+        <g class="stream" transform="translate(${tip[0]},${tip[1]})">
           <path d="${q(0, 0)}" stroke="url(#g-arc-${i})" stroke-width="30" fill="none" stroke-linecap="round" opacity=".5"/>
           <path d="${q(0, 0)}" stroke="url(#g-arc-${i})" stroke-width="12" fill="none" stroke-linecap="round" opacity=".9"/>
           <path class="drop arc" d="${q(0, 0)}" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>
@@ -714,7 +755,7 @@
           <circle class="mist m2" cx="${m2x}" cy="${m2y}" r="${L * .095}" fill="url(#g-mist)"/>
           <circle class="mist m3" cx="${m3x}" cy="${m3y}" r="${L * .06}" fill="url(#g-mist)"/>
         </g>`; })() : `
-        <g class="stream" transform="translate(${l.tip[0]},${l.tip[1]}) scale(${l.streamScale || 1})">
+        <g class="stream" transform="translate(${tip[0]},${tip[1]}) scale(${l.streamScale || 1})">
           <path d="M 0 -4 C 60 -22, 140 -48, 225 -70 L 225 42 C 140 22, 60 8, 0 6 Z" fill="url(#g-stream)"/>
           <path class="drop" d="M 4 -1 C 70 -18, 150 -44, 225 -62" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".95"/>
           <path class="drop d2" d="M 4 3 C 70 -6, 150 -22, 225 -30" stroke="#DDF1FD" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
@@ -723,7 +764,7 @@
           <circle class="mist" cx="190" cy="-42" r="46" fill="url(#g-mist)"/>
           <circle class="mist m2" cx="215" cy="-14" r="40" fill="url(#g-mist)"/>
           <circle class="mist m3" cx="150" cy="-38" r="30" fill="url(#g-mist)"/>
-        </g>`}
+        </g>`).join('')}
       </g>`;
     });
     svg.innerHTML = defs + body;
@@ -852,7 +893,7 @@
       showVerdict('good', 'Correct — ' + totals, detail);
       hint.textContent = 'Nice work. The math is shown below.';
       showWork();
-      playWater(Math.max(...lineGroups.map(g => parseFloat(g.style.getPropertyValue('--dur')) || 2)));
+      playWater();
     } else {
       const bad = current.lines.filter((l, i) => !results[i]).map(l => l.name);
       playAlarm();
@@ -928,66 +969,53 @@
         <h3 style="margin-top:14px">Appliance loss</h3><table>${ap}</table></div>`;
   }
 
-  // ---------- sound (synthesized, no audio files) ----------
+  // ---------- sound: clips synthesized once into WAV and played through <audio> ----------
   let soundOn = true;
   try { soundOn = localStorage.getItem('pump-sound') !== 'off'; } catch (e) {}
-  let actx = null;
-  function audio() {
-    if (!soundOn) return null;
-    try {
-      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-      if (actx.state === 'suspended') actx.resume();
-      return actx;
-    } catch (e) { return null; }
+  function wav(samples, rate) {
+    const n = samples.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) { const x = Math.max(-1, Math.min(1, samples[i])); v.setInt16(44 + i * 2, x < 0 ? x * 32768 : x * 32767, true); }
+    const a = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })));
+    a.preload = 'auto';
+    return a;
   }
-  let waterNodes = [];
-  function stopWater() {
-    waterNodes.forEach(n => { try { n.stop(); } catch (e) {} });
-    waterNodes = [];
-  }
-  // Rushing water: filtered noise that swells as the line fills, then settles into a steady flow and fades
-  function playWater(fillSeconds) {
-    const ctx = audio(); if (!ctx) return;
-    stopWater();
-    const len = Math.ceil(ctx.sampleRate * 2);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    let last = 0;
-    for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = (last + 0.03 * w) / 1.03; d[i] = (w * 0.35 + last * 3) * 0.6; }
-    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
-    const band = ctx.createBiquadFilter(); band.type = 'bandpass'; band.frequency.value = 900; band.Q.value = 0.6;
-    const low = ctx.createBiquadFilter(); low.type = 'lowpass'; low.frequency.value = 2600;
-    const gain = ctx.createGain();
-    const t = ctx.currentTime, total = fillSeconds + 5;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.35, t + Math.max(0.4, fillSeconds * 0.6));
-    gain.gain.setValueAtTime(0.35, t + fillSeconds + 2.5);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + total);
-    // a slow wobble so it reads as moving water rather than static
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.7;
-    const lfoGain = ctx.createGain(); lfoGain.gain.value = 350;
-    lfo.connect(lfoGain).connect(band.frequency);
-    src.connect(band).connect(low).connect(gain).connect(ctx.destination);
-    src.start(t); lfo.start(t); src.stop(t + total + 0.1); lfo.stop(t + total + 0.1);
-    waterNodes = [src, lfo];
-  }
-  // Alarm: a two-tone klaxon for about three seconds
-  function playAlarm() {
-    const ctx = audio(); if (!ctx) return;
-    stopWater();
-    const t0 = ctx.currentTime;
-    const gain = ctx.createGain(); gain.gain.value = 0.18; gain.connect(ctx.destination);
-    for (let i = 0; i < 6; i++) {
-      const osc = ctx.createOscillator(); osc.type = 'square';
-      osc.frequency.value = i % 2 ? 620 : 880;
-      const g = ctx.createGain(); g.gain.setValueAtTime(0, t0 + i * 0.5);
-      g.gain.linearRampToValueAtTime(1, t0 + i * 0.5 + 0.03);
-      g.gain.setValueAtTime(1, t0 + i * 0.5 + 0.42);
-      g.gain.linearRampToValueAtTime(0, t0 + i * 0.5 + 0.48);
-      osc.connect(g).connect(gain);
-      osc.start(t0 + i * 0.5); osc.stop(t0 + i * 0.5 + 0.5);
+  const RATE = 22050;
+  // Alarm: a two-tone klaxon, six half-second notes
+  const alarmClip = (() => {
+    const n = RATE * 3, out = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / RATE, note = Math.floor(t / 0.5), tt = t - note * 0.5;
+      const f = note % 2 ? 620 : 880;
+      const env = tt < 0.03 ? tt / 0.03 : tt > 0.42 ? Math.max(0, (0.48 - tt) / 0.06) : 1;
+      out[i] = (Math.sin(2 * Math.PI * f * t) > 0 ? 1 : -1) * 0.22 * env;
     }
+    return wav(out, RATE);
+  })();
+  // Water: filtered noise that swells over a second and a half, holds, then fades over the last three seconds
+  const waterClip = (() => {
+    const secs = 9, n = RATE * secs, out = new Float32Array(n);
+    let lp = 0, lp2 = 0, brown = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / RATE, w = Math.random() * 2 - 1;
+      brown = (brown + 0.02 * w) / 1.02;
+      lp += 0.18 * (w - lp); lp2 += 0.05 * (lp - lp2);
+      const wobble = 0.85 + 0.15 * Math.sin(2 * Math.PI * 0.7 * t);
+      const env = t < 1.5 ? t / 1.5 : t > secs - 3 ? (secs - t) / 3 : 1;
+      out[i] = (lp * 0.5 + lp2 * 0.6 + brown * 2.5) * 0.45 * wobble * env;
+    }
+    return wav(out, RATE);
+  })();
+  function play(clip) {
+    if (!soundOn) return;
+    try { clip.currentTime = 0; const p = clip.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
   }
+  function stopWater() { try { waterClip.pause(); waterClip.currentTime = 0; } catch (e) {} }
+  function playWater() { stopWater(); play(waterClip); }
+  function playAlarm() { stopWater(); play(alarmClip); }
   $('sound').addEventListener('click', () => {
     soundOn = !soundOn;
     $('sound').setAttribute('aria-pressed', String(soundOn));

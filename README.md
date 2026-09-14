@@ -11,7 +11,7 @@ A single-page app for practicing pump discharge pressure (PDP) calculations, usi
 | AP | Appliance loss (psi) |
 | EL | Elevation pressure: 0.5 psi per foot of elevation (negative below grade), or 5 psi per floor above ground in a building |
 
-The user enters every value for each line. The app totals the PDP live. Pressing **Enter** (or "Charge the line") grades each line against the answer worked from the Glendale sheet. A correct line charges: water fills the hose in the photo and the nozzle flows. A wrong line stays dry and the app shows **Incorrect**. After a correct answer the worked math is shown under the panel. A **Teach me** button shows the same worked math on demand, for review before or instead of attempting the evolution.
+The user enters every value for each line. The app totals the PDP live. Pressing **Enter** (or "Charge the line") grades each line against the answer worked from the Glendale sheet. A correct line charges: water fills the hose in the photo and the nozzle flows. A wrong line stays dry and the app shows **Incorrect**. After a correct answer the worked math is shown under the panel. A **Teach me** button shows the same worked math on demand, for review before or instead of attempting the evolution. A correct answer plays a rushing-water sound; a wrong one plays an alarm and a flashing alert. Sounds are synthesized in the page and played through audio elements, so they work with a phone's mute switch on; the speaker button in the header silences them.
 
 ## Evolutions
 
@@ -31,12 +31,18 @@ The user enters every value for each line. The app totals the PDP live. Pressing
 | 8 | Standpipe: 100′ 2½″ to the FDC, 150′ 1¾″ smooth bore on the 3rd floor | 50 | 63 | 0 | 10 | **123** |
 | 9 | E150, 300′ 2½″ to a high pressure fog Blitz (500 gpm) | 100 | 120 | 0 | 0 | **220** |
 | 10 | E156 supplying a ladder through two 100′ 4″ lines, 1¾″ stack tip (800 gpm) 100′ up | 80 | 3 | 40 | 50 | **173** |
+| 11 · Line 1 | 350′ 1¾″ to a penetrating nozzle (100 psi, 95 gpm) | 100 | 64.75 | 0 | 0 | **164.75** |
+| 11 · Wye line | 200′ 2½″ to a gated wye, two 150′ 1¾″ smooth bores (320 gpm through the wye) | 50 | 101 | 0 | 0 | **151** |
+| 12 | E154: 400′ 4″ up 30′ to a Blitz with low pressure fog (55 psi, 500 gpm) | 55 | 20 | 0 | 15 | **90** |
+| 13 | E151 supplying a ladder through two 100′ 4″ lines, fog master stream (1000 gpm) 60′ up | 100 | 5 | 40 | 30 | **175** |
+
+Evolution 11: the wye trunk carries both branches, 2 × 160 = 320 gpm, so the 2½″ loses (320 × 1) ÷ 10 − 10 = 22 per 100′, 44 for 200′; one 150′ branch adds 57. The wye is under 350 gpm, so no appliance loss. Engine PDP is the penetrating nozzle line, 164.75 (165 grades correct).
 
 Evolution 10: two supply lines split the 800 gpm to 400 each, so FL per 100′ is 4 × 3 ÷ 4 = 3 psi, added once.
 
 Evolution 7, line 2: the same 160 gpm flows through both sections, so FL is 12 on the 2½″ ((160 × 1) ÷ 10 − 10 = 6 per 100′) plus 57 on the 1¾″. The Blitz is used as a gated wye, and a gated wye costs nothing under 350 gpm (10 psi over), so AP is 0.
 
-On a multi-line evolution the app also asks for the **Engine PDP**, which must be the highest line's pressure (evolutions 3 and 6: 126; evolution 7: 125, the deck gun). The lower lines are gated down at their discharges.
+On a multi-line evolution the app also asks for the **Engine PDP**, which must be the highest line's pressure (evolutions 3 and 6: 126; evolution 7: 125, the deck gun; evolution 11: 164.75). The lower lines are gated down at their discharges.
 
 Friction loss for a 1¾″ smooth bore handline at 160 gpm: (160 × 3) ÷ 10 − 10 = 38 psi per 100′.
 
@@ -55,6 +61,7 @@ Encoded in the `REF` object in `index.html`, from the Glendale hydraulics sheet:
 - Two supply lines to the same appliance (`supplyLines: 2` on a line) split the flow: FL is figured for one line at half the gpm and added once.
 - More than one line flowing: the engine's PDP is the highest line's PDP; the rest gate down.
 - Series hose (`hose: [{length, size}, …]` on a line): FL is figured per section at the line's gpm and summed.
+- Gated wye (`branches: 2` with the trunk section marked `trunk: true`): the trunk carries branches × the nozzle flow, FL is added for one branch, and the wye's 350 gpm threshold is checked against the trunk flow.
 - Deck gun (`noHose: true` on a line): no friction loss; NP from the tip plus the Stang gun appliance.
 - Relay pumping (`relay: 'E152'` on a line): the next engine is in service, so the pump only feeds its intake. NP 0, FL on the line between the engines at the downstream flow, AP 20 pump to pump, EL 0.
 - Appliance losses: gated wye 0 under 350 gpm and 10 over (a Blitz used as a wye follows the same rule), ladder 40, Stang gun 25, pump to pump 20; foam eductor operates at 200 psi.
