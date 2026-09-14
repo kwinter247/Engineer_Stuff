@@ -443,7 +443,7 @@
       steps: [
         ...(line.relay
           ? [`NP 0 psi: ${line.relay} is in service, so this pump only feeds ${line.relay}'s intake. Everything past ${line.relay} is ${line.relay}'s to pump.`,
-             `GPM comes from what the ladder is flowing: ${noz.label}, ${noz.gpm} gpm.`]
+             `GPM comes from what ${line.relay} is flowing: ${noz.label}, ${noz.gpm} gpm.`]
           : [`NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`]),
         ...(line.noHose ? [`FL 0 psi: the ${(line.name || 'deck gun').toLowerCase()} is piped on the engine, no hose.`] : [
           ...(nLines > 1 ? [`${nLines} × ${worked[0].size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
@@ -459,7 +459,7 @@
           ? `AP ${fmt(ap)} psi (${appl.label.toLowerCase()}: ${noz.gpm} gpm is ${noz.gpm > appl.over.gpm ? 'over' : 'under'} ${appl.over.gpm} gpm)`
           : `AP ${fmt(ap)} psi (${appl.label.toLowerCase()})`,
         line.relay && !elFt
-          ? `EL 0 psi: ${line.relay} sits at grade. The ladder's elevation is ${line.relay}'s to pump.`
+          ? `EL 0 psi: ${line.relay} sits at grade. Any elevation past ${line.relay} is ${line.relay}'s to pump.`
           : line.floor
             ? `EL = ${floorsUp} floor${floorsUp === 1 ? '' : 's'} above ground × ${REF.elevation.psiPerFloor} = ${fmt(el)} psi (floor ${line.floor}; the ground floor counts as 0)`
             : `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
@@ -582,6 +582,16 @@
         // both 4″ lines from E156 to the ladder's inlet, then the waterway up the ladder to the tip
         path: 'M 340 471 L 353 497 L 372 507 L 397 542 L 413 546 L 420 553 L 445 560 L 455 569 L 510 573 L 520 586 L 523 603 L 532 616 L 555 623 L 643 635 L 842 633 L 970 618 L 978 611 L 981 595 M 328 507 L 341 505 L 346 508 L 356 541 L 388 586 L 427 625 L 441 649 L 498 680 L 563 703 L 627 717 L 681 724 L 750 724 L 820 715 L 862 705 L 896 692 L 951 664 L 973 658 L 988 642 L 1006 648 M 1060 560 L 1112 522 L 1560 112 L 1640 57',
         tip: [1640, 57], stream: 'arc', arc: { c: [35, -50], end: [60, -90] }, mask: '0,0 0,0 0,0',
+      }],
+    },
+    {
+      id: 'e11', title: 'Evolution 11', sub: 'E157 relaying 300′ 4″ to E153, which is flowing a 1¾″ tip', image: 'scene-relay2.jpg',
+      lines: [{
+        name: 'E157 to E153', desc: 'relay · 300′ 4″ · E153 deck gun flowing a 1¾″ tip',
+        length: 300, size: '4', nozzle: 'tip-175', relay: 'E153', appliance: 'pump-to-pump', elevationFt: 0,
+        // 300′ from E157's discharge to E153's intake, then E153's waterway up to the deck gun
+        path: 'M 1284 628 L 1303 653 L 1323 692 L 1331 716 L 1328 745 L 1305 772 L 1250 795 L 1150 808 L 1000 805 L 850 790 L 720 762 L 620 718 L 560 655 L 532 590 L 522 540 L 526 500 M 555 440 L 590 380 L 630 325 L 680 280 L 705 265',
+        tip: [705, 265], stream: 'arc', arc: { c: [300, -150], end: [700, -40] }, mask: '0,0 0,0 0,0',
       }],
     },
   ];
