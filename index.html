@@ -167,6 +167,44 @@
     .verdict.shake { animation: none; }
   }
 
+  /* ---------- wrong-answer alert ---------- */
+  .alert {
+    position: fixed; inset: 0; z-index: 50;
+    display: none; align-items: center; justify-content: center;
+    padding: 24px;
+    background: rgba(120, 10, 10, .55);
+  }
+  .alert.show { display: flex; }
+  .alert-box {
+    width: min(720px, 100%);
+    background: #C8392B; color: #fff;
+    border: 6px solid #fff; border-radius: 10px;
+    padding: 34px 32px 28px; text-align: center;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5);
+    animation: flash .5s steps(1) infinite;
+  }
+  .alert-box .eyebrow {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 26px; letter-spacing: .3em; text-transform: uppercase;
+    opacity: .95;
+  }
+  .alert-box .msg {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 800;
+    font-size: clamp(34px, 6vw, 64px); line-height: 1.05; margin: 14px 0 8px; text-wrap: balance;
+  }
+  .alert-box .fish { font-size: clamp(40px, 8vw, 84px); line-height: 1; margin: 6px 0 14px; }
+  .alert-box button {
+    background: #fff; color: #C8392B; border-color: #fff; font-size: 20px; padding: 10px 24px; margin: 6px auto 0;
+  }
+  @keyframes flash { 0%, 100% { background: #C8392B; border-color: #fff; } 50% { background: #7A1410; border-color: #FFD24A; } }
+  @media (prefers-reduced-motion: reduce) { .alert-box { animation: none; } }
+
+  .sound {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+    background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px;
+    padding: 5px 12px; margin-left: auto; display: flex; gap: 6px; align-items: center;
+  }
+  .sound[aria-pressed="false"] { text-decoration: line-through; opacity: .7; }
+
   /* ---------- pump panel (stacked worksheet) ---------- */
   .panel {
     background: var(--panel);
@@ -324,6 +362,7 @@
   <header>
     <h1>Engine 150 <em>Pump Trainer</em></h1>
     <p class="sub">Work the hydraulics, charge the line. Glendale Fire Department values.</p>
+    <button type="button" class="sound" id="sound" aria-pressed="true">🔊 Sound</button>
   </header>
 
   <div class="tabs" role="tablist" id="tabs" hidden></div>
@@ -360,6 +399,15 @@
     <summary>Glendale hydraulics reference <small>nozzle pressures, friction loss, appliances</small></summary>
     <div class="ref-grid" id="ref"></div>
   </details>
+
+  <div class="alert" id="alert" role="alertdialog" aria-modal="true" aria-labelledby="alert-msg">
+    <div class="alert-box">
+      <div class="eyebrow">Incorrect</div>
+      <div class="fish" aria-hidden="true">🐟</div>
+      <div class="msg" id="alert-msg">Carmen, you are dumber than a goldfish! Do better!</div>
+      <button type="button" id="alert-close">Try again</button>
+    </div>
+  </div>
 
   <p class="notes"><b>How it grades.</b> Every value is checked against the answer worked from the Glendale sheet, and each line's total must match its pump discharge pressure. A correct line charges and its nozzle flows; a wrong line stays dry until you rework it.</p>
 </div>
@@ -804,8 +852,11 @@
       showVerdict('good', 'Correct — ' + totals, detail);
       hint.textContent = 'Nice work. The math is shown below.';
       showWork();
+      playWater(Math.max(...lineGroups.map(g => parseFloat(g.style.getPropertyValue('--dur')) || 2)));
     } else {
       const bad = current.lines.filter((l, i) => !results[i]).map(l => l.name);
+      playAlarm();
+      showAlert();
       if (!engineOk && bad.length === 0) {
         showVerdict('bad', 'Incorrect', 'The lines are right, but the engine PDP is not.');
         hint.textContent = 'The engine pumps to the highest line. The others are gated down.';
@@ -832,6 +883,7 @@
   }
 
   function reset() {
+    stopWater(); hideAlert();
     calc.querySelectorAll('input').forEach(inp => { inp.value = ''; inp.classList.remove('wrong'); });
     lineGroups.forEach((g, i) => { g.classList.remove('charged'); setState(i, null); });
     hideVerdict(); work.classList.remove('show');
@@ -876,11 +928,98 @@
         <h3 style="margin-top:14px">Appliance loss</h3><table>${ap}</table></div>`;
   }
 
+  // ---------- sound (synthesized, no audio files) ----------
+  let soundOn = true;
+  try { soundOn = localStorage.getItem('pump-sound') !== 'off'; } catch (e) {}
+  let actx = null;
+  function audio() {
+    if (!soundOn) return null;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+      return actx;
+    } catch (e) { return null; }
+  }
+  let waterNodes = [];
+  function stopWater() {
+    waterNodes.forEach(n => { try { n.stop(); } catch (e) {} });
+    waterNodes = [];
+  }
+  // Rushing water: filtered noise that swells as the line fills, then settles into a steady flow and fades
+  function playWater(fillSeconds) {
+    const ctx = audio(); if (!ctx) return;
+    stopWater();
+    const len = Math.ceil(ctx.sampleRate * 2);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = (last + 0.03 * w) / 1.03; d[i] = (w * 0.35 + last * 3) * 0.6; }
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const band = ctx.createBiquadFilter(); band.type = 'bandpass'; band.frequency.value = 900; band.Q.value = 0.6;
+    const low = ctx.createBiquadFilter(); low.type = 'lowpass'; low.frequency.value = 2600;
+    const gain = ctx.createGain();
+    const t = ctx.currentTime, total = fillSeconds + 5;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.35, t + Math.max(0.4, fillSeconds * 0.6));
+    gain.gain.setValueAtTime(0.35, t + fillSeconds + 2.5);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + total);
+    // a slow wobble so it reads as moving water rather than static
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.7;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 350;
+    lfo.connect(lfoGain).connect(band.frequency);
+    src.connect(band).connect(low).connect(gain).connect(ctx.destination);
+    src.start(t); lfo.start(t); src.stop(t + total + 0.1); lfo.stop(t + total + 0.1);
+    waterNodes = [src, lfo];
+  }
+  // Alarm: a two-tone klaxon for about three seconds
+  function playAlarm() {
+    const ctx = audio(); if (!ctx) return;
+    stopWater();
+    const t0 = ctx.currentTime;
+    const gain = ctx.createGain(); gain.gain.value = 0.18; gain.connect(ctx.destination);
+    for (let i = 0; i < 6; i++) {
+      const osc = ctx.createOscillator(); osc.type = 'square';
+      osc.frequency.value = i % 2 ? 620 : 880;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t0 + i * 0.5);
+      g.gain.linearRampToValueAtTime(1, t0 + i * 0.5 + 0.03);
+      g.gain.setValueAtTime(1, t0 + i * 0.5 + 0.42);
+      g.gain.linearRampToValueAtTime(0, t0 + i * 0.5 + 0.48);
+      osc.connect(g).connect(gain);
+      osc.start(t0 + i * 0.5); osc.stop(t0 + i * 0.5 + 0.5);
+    }
+  }
+  $('sound').addEventListener('click', () => {
+    soundOn = !soundOn;
+    $('sound').setAttribute('aria-pressed', String(soundOn));
+    $('sound').textContent = soundOn ? '🔊 Sound' : '🔇 Sound';
+    if (!soundOn) stopWater();
+    try { localStorage.setItem('pump-sound', soundOn ? 'on' : 'off'); } catch (e) {}
+  });
+  $('sound').setAttribute('aria-pressed', String(soundOn));
+  $('sound').textContent = soundOn ? '🔊 Sound' : '🔇 Sound';
+
+  // ---------- wrong-answer alert ----------
+  let alertTimer = null;
+  function showAlert() {
+    const a = $('alert');
+    a.classList.add('show');
+    clearTimeout(alertTimer);
+    alertTimer = setTimeout(hideAlert, 4000);
+    $('alert-close').focus();
+  }
+  function hideAlert() {
+    $('alert').classList.remove('show');
+    clearTimeout(alertTimer);
+  }
+  $('alert-close').addEventListener('click', hideAlert);
+  $('alert').addEventListener('click', e => { if (e.target === $('alert')) hideAlert(); });
+
   // ---------- wiring ----------
   calc.addEventListener('submit', e => e.preventDefault());
   document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && $('alert').classList.contains('show')) { e.preventDefault(); hideAlert(); return; }
     if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SUMMARY') { e.preventDefault(); check(); }
-    if (e.key === 'Escape') reset();
+    if (e.key === 'Escape') { if ($('alert').classList.contains('show')) hideAlert(); else reset(); }
   });
   $('charge').addEventListener('click', check);
   $('reset').addEventListener('click', reset);
