@@ -176,7 +176,10 @@
   .mic.blocked { color: #F08A83; }
   .mic.blocked i { background: var(--bad); }
   .mic .txt { min-width: 0; }
-  .mic button { margin-left: auto; }
+  .mic { flex-wrap: wrap; }
+  .mic .mic-btns { margin-left: auto; display: flex; gap: 6px; }
+  .mic.paused i { background: var(--yellow); }
+  .mic.paused { color: var(--yellow); }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(229,72,77,.6); } 100% { box-shadow: 0 0 0 10px rgba(229,72,77,0); } }
   @media (prefers-reduced-motion: reduce) { .mic.live i { animation: none; } }
 
@@ -368,7 +371,10 @@
 
         <div class="mic" id="mic">
           <i></i><span class="txt" id="mic-txt">Starting…</span>
-          <button type="button" class="ghost mini" id="restart">Restart mic</button>
+          <span class="mic-btns">
+            <button type="button" class="charge mini" id="pause">⏸ Pause</button>
+            <button type="button" class="ghost mini" id="restart">Restart mic</button>
+          </span>
         </div>
 
         <div class="count" id="count"><span id="hits">0</span><small>of <span id="total">0</span> called out</small><span class="last" id="last"></span></div>
@@ -766,6 +772,7 @@
   const SEC_INDEX = Object.fromEntries(SECTIONS.map((s, i) => [s.id, i]));
   let rec = null;
   let wantListening = false;
+  let paused = false;
   let restartTimer = null;
   let idx = 0;
   let finalText = '';
@@ -818,7 +825,7 @@
       }
     };
     r.onend = () => {
-      if (!wantListening) { setMic('', 'Microphone off'); return; }
+      if (!wantListening) { setMic(paused ? 'paused' : '', paused ? 'Paused. Nothing is being scored.' : 'Microphone off'); return; }
       setMic('', 'Reconnecting…');
       clearTimeout(restartTimer);
       restartTimer = setTimeout(startRec, 250);
@@ -842,7 +849,15 @@
     clearTimeout(restartTimer);
     if (rec) { try { rec.stop(); } catch (e) {} }
   }
+  function pause() {
+    paused = true;
+    stopRec();
+    setMic('paused', 'Paused. Nothing is being scored.');
+    $('pause').textContent = '▶ Resume';
+  }
   function listen() {
+    paused = false;
+    $('pause').textContent = '⏸ Pause';
     wantListening = true;
     if (rec) { try { rec.abort(); } catch (e) {} rec = null; }
     startRec();
@@ -913,7 +928,7 @@
 
   // ---------- answer sheet ----------
   function complete() {
-    stopRec();
+    stopRec(); paused = false; $('pause').textContent = '⏸ Pause';
     drill.hidden = true; finish.hidden = false;
     const got = hits.filter(Boolean).length, total = ITEMS.length, missed = total - got;
     const pct = Math.round(100 * got / total);
@@ -945,6 +960,7 @@
     listen();   // rec.start() from this tap is what makes the phone ask for the microphone
   });
   $('restart').addEventListener('click', listen);
+  $('pause').addEventListener('click', () => { if (paused) listen(); else pause(); });
   $('peek').addEventListener('click', () => {
     listShown = !listShown;
     $('items').hidden = !listShown;
