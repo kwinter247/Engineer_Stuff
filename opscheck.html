@@ -372,6 +372,7 @@
         <details>
           <summary>What I heard</summary>
           <div class="heard" id="heard"></div>
+          <p class="hint" id="debug" style="text-align:left; margin-top:8px; overflow-wrap:anywhere"></p>
         </details>
 
         <div class="nav">
@@ -794,11 +795,19 @@
       renderHeard();
     };
     r.onerror = (e) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      lastError = e.error + (e.message ? ' · ' + e.message : '');
+      debug();
+      if (e.error === 'not-allowed') {
         wantListening = false;
-        setMic('blocked', 'Microphone blocked. Allow it in the browser settings, then tap Restart mic.');
+        setMic('blocked', 'Microphone blocked (not-allowed). Safari: tap aA in the address bar, Website Settings, Microphone, Allow. Then Restart mic.');
+      } else if (e.error === 'service-not-allowed') {
+        wantListening = false;
+        setMic('blocked', 'Speech service off (service-not-allowed). iPhone: Settings, General, Keyboard, turn on Enable Dictation. Then Restart mic.');
+      } else if (e.error === 'audio-capture') {
+        wantListening = false;
+        setMic('blocked', 'No microphone found (audio-capture). Tap Restart mic.');
       } else if (e.error === 'network') {
-        setMic('blocked', 'No network for speech. Tap Restart mic.');
+        setMic('blocked', 'No network for speech (network). Tap Restart mic.');
       }
     };
     r.onend = () => {
@@ -809,10 +818,17 @@
     };
     return r;
   }
+  let lastError = '', starts = 0;
+  function debug() {
+    $('debug').textContent = 'Debug: ' + (SR ? (window.SpeechRecognition ? 'SpeechRecognition' : 'webkitSpeechRecognition') : 'no speech API')
+      + ' · starts ' + starts + ' · last error: ' + (lastError || 'none') + ' · ' + navigator.userAgent.replace(/^Mozilla\/5\.0 /, '').slice(0, 90);
+  }
   function startRec() {
     if (!SR) return;
     if (!rec) rec = buildRecognizer();
-    try { rec.start(); } catch (e) { /* already started */ }
+    starts++;
+    try { rec.start(); } catch (e) { lastError = 'start threw: ' + e.message; }
+    debug();
   }
   function stopRec() {
     wantListening = false;
