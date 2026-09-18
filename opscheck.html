@@ -311,14 +311,29 @@
   .sheet li.hit i { background: var(--good); }
   .sheet li.miss { background: rgba(200,57,43,.12); color: var(--bad); font-weight: 500; }
   .sheet li.miss i { background: var(--bad); }
-  .sheet.missed-only li.hit { display: none; }
-  .sheet.missed-only .sec.clean { display: none; }
   .toggle {
     font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
     background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px;
   }
   .toggle[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
   .finish-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .finishcard {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px 20px;
+    display: grid; gap: 12px; justify-items: start; box-shadow: 0 10px 30px var(--shadow);
+  }
+  .finishcard h2 { margin: 0; font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 28px; letter-spacing: .03em; text-transform: uppercase; line-height: 1.05; }
+  .finishcard p { margin: 0; color: var(--ink-soft); }
+  .finishcard p b { color: var(--ink); font-family: "IBM Plex Mono", monospace; }
+  .finishcard .charge { width: 100%; }
+  .sheet li { cursor: pointer; }
+  .sheet li.flag { outline: 2px solid var(--yellow-deep); outline-offset: -2px; }
+  .sheet li .tag {
+    display: inline-block; margin-left: 8px; vertical-align: 1px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    background: var(--yellow); color: #1B1600; border-radius: 3px; padding: 1px 6px;
+  }
+  .sheet.missed-only li.hit:not(.flag) { display: none; }
+  .sheet.missed-only .sec.hide { display: none; }
 </style>
 </head>
 <body>
@@ -353,6 +368,12 @@
             <img id="photo" alt="">
             <div class="cap" id="cap"></div>
           </div>
+        </section>
+        <section class="finishcard" id="finishcard" hidden>
+          <h2>That's all 20 photos</h2>
+          <p id="finish-sum"></p>
+          <p>The microphone is still listening. Go back to any photo and call out anything you missed, or finish now.</p>
+          <button type="button" class="charge" id="complete-big">Complete · show my answer sheet</button>
         </section>
         <div class="nav under">
           <div class="row">
@@ -403,11 +424,19 @@
   <section id="finish" hidden>
     <div class="progress"><span>Answer sheet</span><small>Engineer Operational Check</small></div>
     <div class="score" id="score" style="margin-top: 14px"></div>
-    <div class="finish-actions" style="margin-top: 14px">
+    <p class="notes" style="margin-top: 12px"><b>Disagree with a mark?</b> Tap the item. A red item you did say gets flagged "I said this"; a green one you didn't say gets "Didn't say this". Then send the report so the wording can be fixed.</p>
+    <div class="finish-actions" style="margin-top: 12px">
+      <button type="button" class="toggle" id="share">Send report</button>
+      <button type="button" class="toggle" id="copy">Copy report</button>
       <button type="button" class="toggle" id="missed-only" aria-pressed="false">Missed only</button>
       <button type="button" class="toggle" id="back">‹ Back to the photos</button>
       <button type="button" class="toggle" id="again">Start over</button>
     </div>
+    <p class="notes" id="copy-note" hidden></p>
+    <details id="report-box" style="margin-top: 12px">
+      <summary class="toggle" style="display: inline-block; cursor: pointer">Report text</summary>
+      <textarea id="report" readonly style="width: 100%; min-height: 200px; margin-top: 8px; font: 13px/1.4 'IBM Plex Mono', monospace; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 8px"></textarea>
+    </details>
     <div class="sheet" id="sheet" style="margin-top: 14px"></div>
   </section>
 
@@ -687,6 +716,7 @@
     { image: 'ops-18.jpg', title: 'Lights on', sub: 'Hot lap. Driving lights, Code 3, scene lights, audible devices', sections: ['hot-lights', 'hot-audible'] },
     { image: 'ops-19.jpg', title: 'Pump panel', sub: 'Pump check', sections: ['pump'] },
     { image: 'ops-20.jpg', title: 'Park brake', sub: 'Air system and brake test, then close it out', sections: ['air-setup', 'air-popout', 'air-recovery', 'brake-test', 'complete'] },
+    { finish: true, title: 'Finish', sub: 'All photos done', sections: [] },
   ];
 
   // ---------- matching ----------
@@ -773,6 +803,7 @@
   let rec = null;
   let wantListening = false;
   let paused = false;
+  let flags = new Set();          // answer-sheet items the user disputes
   let restartTimer = null;
   let idx = 0;
   let finalText = '';
@@ -896,6 +927,7 @@
     }).join('');
     $('hits').textContent = hits.filter(Boolean).length;
     $('total').textContent = ITEMS.length;
+    if (SLIDES[idx].finish) $('finish-sum').innerHTML = '<b>' + hits.filter(Boolean).length + ' of ' + ITEMS.length + '</b> items called out so far.';
     $('chips').innerHTML = SLIDES[idx].sections.map(id => {
       const si = SEC_INDEX[id], s = sectionScore(si);
       return '<span class="chip' + (s.got === s.total ? ' full' : '') + '">' + esc(SECTIONS[si].title) + ' <b>' + s.got + '/' + s.total + '</b></span>';
@@ -909,20 +941,26 @@
     priority = new Set();
     ITEMS.forEach((it, n) => { if (cur.sections.includes(SECTIONS[it.sec].id)) priority.add(n); });
 
-    $('photo').src = cur.image; $('photo').alt = cur.title;
-    $('cap').innerHTML = esc(cur.title) + (cur.sub ? '<small>' + esc(cur.sub) + '</small>' : '');
+    $('scene').hidden = !!cur.finish;
+    $('finishcard').hidden = !cur.finish;
+    if (!cur.finish) {
+      $('photo').src = cur.image; $('photo').alt = cur.title;
+      $('cap').innerHTML = esc(cur.title) + (cur.sub ? '<small>' + esc(cur.sub) + '</small>' : '');
+    }
     $('jump').value = String(idx);
 
     renderCounts();
 
-    $('progress').innerHTML = '<span>Photo ' + (idx + 1) + ' of ' + SLIDES.length + '</span><small>' + esc(cur.title) + '</small>'
+    const nPhotos = SLIDES.filter(x => !x.finish).length;
+    $('progress').innerHTML = '<span>' + (cur.finish ? 'Finish' : 'Photo ' + (idx + 1) + ' of ' + nPhotos) + '</span><small>' + esc(cur.finish ? cur.sub : cur.title) + '</small>'
       + '<span class="dots">' + SLIDES.map((_, n) => '<i class="' + (n < idx ? 'done' : n === idx ? 'now' : '') + '"></i>').join('') + '</span>';
 
     const prev = SLIDES[idx - 1], next = SLIDES[idx + 1];
     $('prev').disabled = !prev;
     $('prev-sub').textContent = prev ? prev.title : 'First photo';
-    $('next-title').textContent = next ? 'Next' : 'Complete';
-    $('next-sub').textContent = next ? next.title : 'Answer sheet';
+    $('next').hidden = !next;
+    $('next-title').textContent = 'Next';
+    $('next-sub').textContent = next ? (next.finish ? 'All photos done' : next.title) : '';
     window.scrollTo({ top: 0 });
   }
 
@@ -935,16 +973,63 @@
     const sc = $('score');
     sc.className = 'score ' + (missed === 0 ? 'good' : pct >= 80 ? 'mid' : 'bad');
     sc.innerHTML = '<div class="big">' + got + '/' + total + '</div><b>' + (missed === 0 ? 'Nothing missed' : 'Missed ' + missed) + '</b><small>' + pct + '% of the operational check called out</small>';
-    $('sheet').innerHTML = SECTIONS.map((s, si) => {
-      const r = sectionScore(si);
-      return '<div class="sec' + (r.got === r.total ? ' clean' : '') + '"><h3>' + esc(s.title) + '<span class="' + (r.got === r.total ? 'good' : 'bad') + '">' + r.got + '/' + r.total + '</span></h3><ul>'
-        + ITEMS.map((it, n) => it.sec === si ? '<li class="' + (hits[n] ? 'hit' : 'miss') + '"><i>' + (hits[n] ? '✓' : '✕') + '</i><span>' + esc(it.label) + '</span></li>' : '').join('')
-        + '</ul></div>';
-    }).join('');
+    renderSheet();
     window.scrollTo({ top: 0 });
   }
+  function renderSheet() {
+    $('sheet').innerHTML = SECTIONS.map((s, si) => {
+      const r = sectionScore(si);
+      const anyFlag = ITEMS.some((it, n) => it.sec === si && flags.has(n));
+      return '<div class="sec' + (r.got === r.total && !anyFlag ? ' hide' : '') + '"><h3>' + esc(s.title) + '<span class="' + (r.got === r.total ? 'good' : 'bad') + '">' + r.got + '/' + r.total + '</span></h3><ul>'
+        + ITEMS.map((it, n) => it.sec === si
+          ? '<li class="' + (hits[n] ? 'hit' : 'miss') + (flags.has(n) ? ' flag' : '') + '" data-i="' + n + '"><i>' + (hits[n] ? '✓' : '✕') + '</i><span>' + esc(it.label)
+            + (flags.has(n) ? '<span class="tag">' + (hits[n] ? 'Didn\'t say this' : 'I said this') + '</span>' : '') + '</span></li>' : '').join('')
+        + '</ul></div>';
+    }).join('');
+    $('report').value = reportText();
+  }
+  function reportText() {
+    const got = hits.filter(Boolean).length;
+    const saidButMissed = ITEMS.map((it, n) => n).filter(n => flags.has(n) && !hits[n]);
+    const hitButNotSaid = ITEMS.map((it, n) => n).filter(n => flags.has(n) && hits[n]);
+    const missed = ITEMS.map((it, n) => n).filter(n => !hits[n] && !flags.has(n));
+    const line = n => '- ' + ITEMS[n].label + '  [' + SECTIONS[ITEMS[n].sec].title + ']';
+    return [
+      'OPS CHECK REPORT · ' + new Date().toLocaleString(),
+      'Score ' + got + '/' + ITEMS.length,
+      '',
+      'FLAGGED · I said this but it was marked missed (' + saidButMissed.length + ')',
+      ...(saidButMissed.length ? saidButMissed.map(line) : ['- none']),
+      '',
+      'FLAGGED · marked as said but I did not say it (' + hitButNotSaid.length + ')',
+      ...(hitButNotSaid.length ? hitButNotSaid.map(line) : ['- none']),
+      '',
+      'MISSED, not flagged (' + missed.length + ')',
+      ...missed.map(line),
+      '',
+      'WHAT I HEARD',
+      finalText.trim() || '(nothing)',
+      '',
+      $('debug').textContent,
+    ].join('\n');
+  }
+  async function sendReport() {
+    const text = reportText();
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Ops Check report', text }); return; } catch (e) { /* cancelled or unsupported */ }
+    }
+    copyReport();
+  }
+  async function copyReport() {
+    const text = reportText(), note = $('copy-note');
+    note.hidden = false;
+    try { await navigator.clipboard.writeText(text); note.textContent = 'Report copied. Paste it into a message.'; return; } catch (e) {}
+    $('report-box').open = true; $('report').select();
+    try { document.execCommand('copy'); note.textContent = 'Report copied. Paste it into a message.'; }
+    catch (e) { note.textContent = 'Copy did not work here. The report text is below; select it and copy.'; }
+  }
   function reset() {
-    hits = ITEMS.map(() => false);
+    hits = ITEMS.map(() => false); flags = new Set();
     finalText = ''; interimText = '';
     $('heard').textContent = ''; $('last').textContent = '';
     $('missed-only').setAttribute('aria-pressed', 'false'); $('sheet').classList.remove('missed-only');
@@ -967,7 +1052,16 @@
     $('hidden-note').hidden = listShown;
     $('peek').textContent = listShown ? 'Hide the list' : 'Show the list';
   });
-  $('next').addEventListener('click', () => { if (idx + 1 < SLIDES.length) show(idx + 1); else complete(); });
+  $('next').addEventListener('click', () => { if (idx + 1 < SLIDES.length) show(idx + 1); });
+  $('complete-big').addEventListener('click', complete);
+  $('share').addEventListener('click', sendReport);
+  $('copy').addEventListener('click', copyReport);
+  $('sheet').addEventListener('click', e => {
+    const li = e.target.closest('li[data-i]'); if (!li) return;
+    const n = Number(li.dataset.i);
+    if (flags.has(n)) flags.delete(n); else flags.add(n);
+    renderSheet();
+  });
   $('prev').addEventListener('click', () => { if (idx > 0) show(idx - 1); });
   $('complete').addEventListener('click', complete);
   $('back').addEventListener('click', () => { finish.hidden = true; drill.hidden = false; show(idx); listen(); });
