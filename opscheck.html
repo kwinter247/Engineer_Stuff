@@ -97,6 +97,11 @@
 
   .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
   .layout > *, .panel > * { min-width: 0; }
+  .col { display: grid; gap: 10px; min-width: 0; }
+  .nav.under { border-top: 0; padding-top: 0; margin-top: 0; }
+  .nav.under .hint { color: var(--ink-soft); }
+  .nav.under .next.prev { color: var(--ink); border-color: var(--line); background: var(--surface); }
+  .nav.under .next.prev:hover { border-color: var(--ink-soft); }
   @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
   /* ---------- gate: microphone permission ---------- */
@@ -339,12 +344,21 @@
     <div class="progress" id="progress"></div>
     <div class="progress" style="margin-top: 10px"><small>Jump to</small><select class="jump" id="jump" aria-label="Jump to a photo"></select></div>
     <div class="layout" style="margin-top: 18px">
-      <section class="scene" id="scene">
-        <div class="photo">
-          <img id="photo" alt="">
-          <div class="cap" id="cap"></div>
+      <div class="col">
+        <section class="scene" id="scene">
+          <div class="photo">
+            <img id="photo" alt="">
+            <div class="cap" id="cap"></div>
+          </div>
+        </section>
+        <div class="nav under">
+          <div class="row">
+            <button type="button" class="next prev" id="prev"><span><span>Previous</span><small id="prev-sub"></small></span><span class="arrow">‹</span></button>
+            <button type="button" class="next" id="next"><span><span id="next-title">Next</span><small id="next-sub"></small></span><span class="arrow">›</span></button>
+          </div>
+          <p class="hint">The microphone keeps listening as you move between photos.</p>
         </div>
-      </section>
+      </div>
 
       <section class="panel" aria-labelledby="panel-title">
         <div class="panel-head">
@@ -375,13 +389,6 @@
           <p class="hint" id="debug" style="text-align:left; margin-top:8px; overflow-wrap:anywhere"></p>
         </details>
 
-        <div class="nav">
-          <div class="row">
-            <button type="button" class="next prev" id="prev"><span><span>Previous</span><small id="prev-sub"></small></span><span class="arrow">‹</span></button>
-            <button type="button" class="next" id="next"><span><span id="next-title">Next</span><small id="next-sub"></small></span><span class="arrow">›</span></button>
-          </div>
-          <p class="hint">The microphone keeps listening as you move between photos.</p>
-        </div>
       </section>
     </div>
   </div>
