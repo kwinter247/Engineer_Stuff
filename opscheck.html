@@ -57,7 +57,8 @@
     padding-inline: 16px;
     padding-block: 20px 48px;
   }
-  .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+  .wrap { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .wrap > * { min-width: 0; }
 
   header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
   h1 {
@@ -88,12 +89,14 @@
   :root[data-theme="dark"] .progress { color: var(--yellow); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .progress { color: var(--yellow); } }
   .progress small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
-  .progress .dots { display: flex; gap: 5px; margin-left: auto; }
-  .progress .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: block; }
+  .progress .dots { display: flex; flex-wrap: wrap; gap: 5px; margin-left: auto; min-width: 0; max-width: 100%; }
+  .progress .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); display: block; }
+  @media (max-width: 480px) { .progress .dots { flex-basis: 100%; margin-left: 0; } }
   .progress .dots i.done { background: var(--ink-soft); }
   .progress .dots i.now { background: var(--yellow); box-shadow: 0 0 0 2px var(--navy); }
 
   .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  .layout > *, .panel > * { min-width: 0; }
   @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
   /* ---------- gate: microphone permission ---------- */
@@ -112,6 +115,17 @@
   .scene { background: #8f8b84; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 0 var(--line); }
   .scene .photo { position: relative; }
   .scene img { display: block; width: 100%; height: auto; }
+  .scene .nophoto {
+    aspect-ratio: 16 / 9; display: grid; place-content: center; text-align: center; gap: 4px;
+    background: linear-gradient(160deg, #2A3444, #1B2230); color: #B9C2D0; padding: 24px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: clamp(26px, 5vw, 40px); letter-spacing: .04em; text-transform: uppercase; line-height: 1.05;
+  }
+  .scene .nophoto small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 14px; letter-spacing: 0; text-transform: none; color: #8E97A6; }
+  .jump {
+    flex: 1 1 200px; min-width: 0; width: 100%;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px;
+  }
   .scene .cap {
     position: absolute; left: 0; right: 0; bottom: 0;
     padding: 10px 14px 9px; background: linear-gradient(transparent, rgba(0,0,0,.65));
@@ -168,7 +182,7 @@
     background: #0F1217; border: 1px solid #3A414D; border-radius: 4px; padding: 10px 12px;
   }
   .count small { font-family: "Barlow", sans-serif; font-size: 13px; color: var(--panel-muted); font-weight: 500; }
-  .count .last { margin-left: auto; font-family: "Barlow", sans-serif; font-size: 14px; font-weight: 500; color: var(--panel-text); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .count .last { margin-left: auto; flex: 1 1 0; font-family: "Barlow", sans-serif; font-size: 14px; font-weight: 500; color: var(--panel-text); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .count .last b { color: #6FD39A; font-weight: 600; }
 
   .items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -269,10 +283,12 @@
   <!-- drill -->
   <div id="drill" hidden>
     <div class="progress" id="progress"></div>
+    <div class="progress" style="margin-top: 10px"><small>Jump to</small><select class="jump" id="jump" aria-label="Jump to a check"></select></div>
     <div class="layout" style="margin-top: 18px">
       <section class="scene" id="scene">
         <div class="photo">
-          <img id="photo" alt="">
+          <img id="photo" alt="" hidden>
+          <div class="nophoto" id="nophoto" hidden></div>
           <div class="cap" id="cap"></div>
         </div>
         <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
@@ -329,24 +345,248 @@
 
 <script>
   // ---------- checklists ----------
-  // One entry per photo. `items[].say` lists extra wording that counts as calling the item out;
+  // One entry per slide. `items[].say` lists extra wording that counts as calling the item out;
   // the label itself always counts. Matching ignores small words like "the" and word endings,
   // so "chock the wheels", "wheels chocked" and "wheel chocks" all match "chock wheels".
+  // `image` is optional; a slide without one shows a placeholder until the photo is added.
   const CHECKS = [
     {
-      id: 'sample',
-      title: 'Sample slide',
-      sub: 'Placeholder until the real photos and lists arrive',
-      image: 'scene-150.jpg',
+      id: 'walk', title: 'General Condition', sub: 'Initial walk around, first approach to the truck',
       items: [
-        { label: 'Parking brake set', say: ['brake set', 'set the brake', 'parking brake'] },
-        { label: 'Wheels chocked', say: ['chock wheels', 'chocks in', 'chocks'] },
-        { label: 'Pump engaged', say: ['engage pump', 'pump in gear', 'pump light'] },
-        { label: 'Tank to pump open', say: ['tank to pump', 'open tank'] },
-        { label: 'Discharge open', say: ['open discharge', 'discharge gate', 'charge the line'] },
-        { label: 'Throttle to pressure', say: ['throttle up', 'bring up pressure', 'set the pressure', 'throttle'] },
-        { label: 'Relief valve set', say: ['relief valve', 'set the relief', 'governor set', 'governor'] },
-        { label: 'Intake pressure checked', say: ['intake pressure', 'check intake', 'residual pressure', 'residual'] },
+        { label: 'New or apparent damage', say: ['damage', 'new damage', 'body damage'] },
+        { label: 'Leaks beneath the vehicle: water, engine oil, foam, coolant, hydraulic oil', say: ['leaks', 'leaking', 'leakage', 'under the truck', 'underneath', 'puddles', 'drips'] },
+        { label: 'Tire condition and pressure, sidewall deformation', say: ['tires', 'tire pressure', 'sidewall', 'sidewalls', 'low tire', 'flat tire'] },
+        { label: 'Listen for air leaks or abnormal noises', say: ['air leaks', 'air leak', 'noises', 'abnormal noise', 'hissing', 'listen'] },
+        { label: 'Unplug shore power', say: ['shore power', 'shore line', 'shoreline', 'unplug', 'plug'] },
+        { label: 'Ignition switch on', say: ['ignition', 'ignition on', 'key on', 'turn on the key', 'switch on'] },
+        { label: 'Diesel fuel and DEF levels, ¾ tank and above', say: ['fuel', 'diesel', 'fuel level', 'def', 'deaf', 'diesel exhaust fluid', '3 4 tank', 'three quarter', 'three quarters'] },
+        { label: 'Air pressure in front and rear tanks', say: ['air pressure', 'air tanks', 'front and rear air', 'front rear air', 'air gauges'] },
+        { label: 'System Info: system voltage 12.0 volts or greater', say: ['system info', 'voltage', 'volts', '12 volts', 'twelve volts', 'system voltage'] },
+        { label: 'Report from the off-going engineer: known issues, status of equipment', say: ['off going engineer', 'offgoing engineer', 'pass down', 'passdown', 'report', 'known issues', 'talk to the engineer', 'previous engineer', 'last engineer'] },
+      ],
+    },
+    {
+      id: 'cold-body', title: 'Cold Lap · Body and Lights', sub: 'Engine and ignition off',
+      items: [
+        { label: 'Wheel chocks on both sides of the left rear outer dually', say: ['chocks', 'chock', 'wheel chocks', 'chock the wheels', 'dually', 'left rear'] },
+        { label: 'Notify the crew you are doing the ops check', say: ['notify crew', 'notify the crew', 'tell the crew', 'let the crew know', 'crew knows', 'inform the crew', 'crew'] },
+        { label: 'Body panels: paint, scratches, dents, debris', say: ['body panels', 'body panel', 'paint', 'scratches', 'dents', 'panels'] },
+        { label: 'Decals, striping, drip rails, fenders', say: ['decals', 'striping', 'stripes', 'drip rails', 'drip rail', 'fenders', 'fender'] },
+        { label: 'Doors: condition and operation', say: ['doors', 'door', 'compartment doors', 'doors open and close'] },
+        { label: 'Windows: damage, open and close', say: ['windows', 'window'] },
+        { label: 'Lights: driving, marker, Code 3; lenses and trim rings intact', say: ['lights', 'lenses', 'lens', 'trim rings', 'trim ring', 'marker lights', 'driving lights', 'code 3 lights', 'code 3', 'code three'] },
+      ],
+    },
+    {
+      id: 'cold-front', title: 'Cold Lap · Front of Truck', sub: 'Engine and ignition off',
+      items: [
+        { label: 'Windshield: cracks, star chips, clean and clear', say: ['windshield', 'wind shield', 'star chips', 'chips', 'glass', 'clean and clear'] },
+        { label: 'Mirrors: damage, clean and clear', say: ['mirrors', 'mirror'] },
+        { label: 'Wipers: condition, cracks, need of replacement', say: ['wipers', 'wiper', 'wiper blades', 'blades'] },
+        { label: 'Front bumper: new damage, alignment with body', say: ['front bumper', 'bumper alignment', 'bumper damage', 'bumper lined up', 'bumper straight'] },
+        { label: 'Under the front bumper: hose reel and other components', say: ['hose reel', 'reel', 'under the bumper', 'under front bumper', 'underneath the bumper', 'below the bumper'] },
+        { label: 'Grille and Q-siren: damage, secured to bumper', say: ['grille', 'grill', 'q siren', 'queue siren', 'cue siren', 'q', 'siren', 'secured'] },
+      ],
+    },
+    {
+      id: 'cold-rear', title: 'Cold Lap · Rear of Truck', sub: 'Engine and ignition off',
+      items: [
+        { label: 'Rear bumper: damage, debris, alignment with body', say: ['rear bumper', 'back bumper', 'bumper', 'tailboard', 'tail board'] },
+        { label: 'Supply line, Humat, hydrant wrench present and ready', say: ['supply line', 'supply', 'humat', 'hue mat', 'human valve', 'hydrant valve', 'hydrant wrench', 'wrench', 'hydrant bag', '4 inch', 'four inch', 'ldh'] },
+        { label: 'Ladder secure, operates normally', say: ['ladder', 'ladders', 'ground ladder', 'ladder rack'] },
+        { label: 'Hose clamp present and ready', say: ['hose clamp', 'clamp'] },
+      ],
+    },
+    {
+      id: 'cold-top', title: 'Cold Lap · Top of Truck', sub: 'Engine and ignition off',
+      items: [
+        { label: 'Hose beds in ready state', say: ['hose beds', 'hose bed', 'hosebed', 'hose loads', 'hose load', 'hose'] },
+        { label: 'Antennas present and undamaged', say: ['antennas', 'antenna', 'antennae'] },
+        { label: 'Light bar undamaged', say: ['light bar', 'lightbar', 'light bars'] },
+        { label: 'Stang gun undamaged, operates, ready state', say: ['stang gun', 'stang', 'stan gun', 'stang-gun', 'deck gun', 'deckgun', 'master stream', 'monitor'] },
+        { label: 'A/C unit undamaged, fans clear of debris', say: ['ac unit', 'a c unit', 'ac', 'air conditioner', 'air conditioning', 'fans', 'fan'] },
+        { label: 'Clear any debris from the top of the truck', say: ['clear debris', 'clear any debris', 'clean off the top', 'debris on top', 'top of the truck', 'leaves', 'branches'] },
+      ],
+    },
+    {
+      id: 'cold-cab', title: 'Cold Lap · Interior', sub: 'Engine and ignition off',
+      items: [
+        { label: 'Extend and check all seat belts, confirm latches', say: ['seat belts', 'seatbelts', 'seat belt', 'seatbelt', 'belts latch', 'latches', 'latch'] },
+        { label: '5 radios, 5 headsets, 2 iPads present and undamaged', say: ['radios', 'radio', '5 radios', 'headsets', 'headset', '5 headsets', 'ipads', 'ipad', '2 ipads', 'tablets'] },
+        { label: 'New damage to seats or interior components', say: ['seats', 'seat damage', 'interior damage', 'interior', 'cab damage'] },
+        { label: 'Other needs in the cab after the ops check', say: ['other needs', 'cab needs', 'anything else in the cab', 'address the cab', 'clean the cab', 'supplies'] },
+      ],
+    },
+    {
+      id: 'tires', title: 'Cold Lap · Tires', sub: 'Each tire and wheel assembly',
+      items: [
+        { label: 'Condition of the tire and wheel assembly', say: ['tire condition', 'wheel assembly', 'tire and wheel', 'tires and wheels', 'rims', 'rim condition', 'wheel condition'] },
+        { label: 'Tread depth: at least 4/32″ front, 2/32″ rear', say: ['tread depth', 'tread gauge', 'depth gauge', '4 32', '2 32', 'four thirty seconds', 'two thirty seconds', 'tread'] },
+        { label: 'No missing, bent or broken studs or lugs', say: ['studs', 'stud', 'lugs', 'lug', 'broken studs', 'missing lugs'] },
+        { label: 'Lug nuts tight, checked by hand', say: ['lug nuts', 'lug nut', 'lugnuts', 'nuts tight', 'by hand', 'tight'] },
+        { label: 'No cracks or damage that would keep the tire from sealing to the rim', say: ['sealing', 'seal to the rim', 'seals to the rim', 'bead', 'rim cracks', 'cracked rim', 'rim damage', 'cracks in the rim'] },
+        { label: 'No unusual brake dust on the wheel', say: ['brake dust', 'dust'] },
+        { label: 'No fluid trails on the wheel or tire: axle gear oil leak', say: ['fluid trails', 'trails', 'gear oil', 'axle oil', 'axle seal', 'hub seal', 'hub leak', 'axle leak', 'wet hub'] },
+        { label: 'Valve stems: cracks or looseness', say: ['valve stems', 'valve stem', 'stems', 'stem'] },
+        { label: 'Inflation does not exceed the max cold pressure on the B-post placard or the tire, whichever is lower', say: ['inflation', 'inflated', 'placard', 'b post', 'b-post', 'max pressure', 'cold pressure', 'psi', 'tire pressure', 'whichever is lower'] },
+        { label: 'Tread separation', say: ['tread separation', 'separation', 'separating'] },
+        { label: 'No excessive sidewall wear, cuts or objects impaled in the tire', say: ['sidewall', 'sidewall wear', 'cuts', 'objects', 'impaled', 'nails', 'screws', 'punctures'] },
+      ],
+    },
+    {
+      id: 'suspension', title: 'Cold Lap · Suspension', sub: 'Behind each wheel',
+      items: [
+        { label: 'Visually inspect suspension components behind the wheels', say: ['suspension', 'behind the wheels', 'behind the wheel', 'suspension components'] },
+        { label: 'Springs, spring hangers, shackles, U-bolts, shock absorbers', say: ['springs', 'spring', 'hangers', 'spring hangers', 'shackles', 'shackle', 'u bolts', 'u bolt', 'ubolts', 'shocks', 'shock absorbers', 'shock'] },
+        { label: 'Springs with cracked or broken leaves', say: ['cracked leaves', 'broken leaves', 'leaves', 'leaf', 'leaf springs', 'leaf spring', 'cracked springs', 'broken springs'] },
+        { label: 'No spring deflection on a level surface', say: ['deflection', 'deflecting', 'level surface', 'sagging', 'sag', 'sitting level', 'truck is level'] },
+      ],
+    },
+    {
+      id: 'fluids', title: 'Cold Lap · Fluids', sub: 'Weekly, cab tilt required, or when deemed necessary',
+      items: [
+        { label: 'Engine oil on the dipstick', say: ['engine oil', 'oil level', 'dipstick', 'dip stick', 'oil'] },
+        { label: 'Engine off 15+ minutes before checking oil', say: ['15 minutes', 'fifteen minutes', 'off for 15', 'engine off', 'let it sit', 'collect in the pan', 'oil pan'] },
+        { label: 'Oil deep black, not gray or milky (coolant in oil)', say: ['deep black', 'black', 'milky', 'gray', 'grey', 'coolant in the oil', 'oil color', 'oil colour'] },
+        { label: 'Add oil through the fill port; type on the driver door panel', say: ['add oil', 'fill port', 'oil type', 'door panel', 'driver door', 'drivers door', 'top off'] },
+        { label: 'Transmission fluid: engine off, level surface, 160 to 220°', say: ['transmission fluid', 'transmission', 'trans fluid', 'tranny', 'operating temperature', '160', '220'] },
+        { label: 'Never add transmission fluid; notify Resource if low or high', say: ['never add', 'do not add', 'dont add', 'notify resource', 'call resource', 'resource'] },
+        { label: 'Coolant at the level mark in the reservoir (Saulsbury) or in the sight glass (E-Max)', say: ['coolant', 'antifreeze', 'anti freeze', 'reservoir', 'sight glass', 'site glass', 'saulsbury', 'salisbury', 'e max', 'emax', 'radiator'] },
+        { label: 'Add coolant slowly into the top of the radiator, stop halfway up the sight glass', say: ['add coolant', 'halfway', 'half way', 'top of the radiator', 'fill the radiator', 'radiator cap'] },
+      ],
+    },
+    {
+      id: 'belts', title: 'Cold Lap · Belts and Electrical', sub: 'Weekly, cab tilt required. Never check belts with the motor running',
+      items: [
+        { label: 'Belts: tightness and excessive wear', say: ['belts', 'belt', 'belt tension', 'tightness', 'belt wear', 'serpentine'] },
+        { label: 'Serpentine belts aligned with the pulley grooves', say: ['aligned', 'alignment', 'grooves', 'pulleys', 'pulley', 'tracking'] },
+        { label: 'Fraying or cracking on the belt', say: ['fraying', 'frayed', 'cracking', 'cracked belt', 'glazing'] },
+        { label: 'Water pump, air compressor, fan, alternator belts', say: ['water pump', 'air compressor', 'compressor', 'fan belt', 'alternator'] },
+        { label: 'Battery condition: swelling, leaking, corrosion', say: ['batteries', 'battery', 'swelling', 'swollen', 'corrosion', 'corroded', 'terminals', 'battery leaking'] },
+        { label: 'No battery repair; contact the GFD Fleet Manager', say: ['fleet manager', 'fleet', 'no battery repair', 'dont repair', 'do not repair', 'not repair'] },
+        { label: 'Wiring: melted insulators, loose or frayed wires', say: ['wiring', 'wires', 'wire', 'melted', 'insulators', 'insulation', 'loose wires', 'frayed wires', 'chafing', 'chafed'] },
+      ],
+    },
+    {
+      id: 'hot-start', title: 'Hot Lap · Start Up', sub: 'Engine running. Use a spotter as you start the truck',
+      items: [
+        { label: 'Spotter watching for leaks, damage, noises; signal to shut down', say: ['spotter', 'observer', 'someone watching', 'watch the truck', 'signal', 'shut down signal'] },
+        { label: 'Ignition to Run: warning lights test then go out, gauges sweep', say: ['run position', 'ignition to run', 'warning lights', 'lights test', 'bulb check', 'gauges sweep', 'sweep', 'gauge sweep', 'needles sweep', 'self test', 'ignition'] },
+        { label: 'Listen for the intermittent alarm', say: ['intermittent alarm', 'intermittent', 'beeping', 'chime', 'alarm beeps'] },
+        { label: 'System Info: system voltage 12.0 or higher', say: ['system info', 'voltage', 'volts', '12 volts', 'twelve volts', 'system voltage'] },
+        { label: 'Hold the start switch; engine turns over and starts quickly', say: ['start switch', 'start the truck', 'start the engine', 'turns over', 'turn over', 'cranks', 'crank', 'fires right up', 'starts quickly', 'start'] },
+        { label: 'FIRST: oil pressure climbs immediately to 10 to 15+ psi', say: ['oil pressure', 'oil pressure climbs', '10 to 15', 'ten to fifteen', '10 15', 'pressure climbs', 'pressure comes up'] },
+        { label: 'Shut down immediately if oil pressure does not climb', say: ['shut down', 'shut it down', 'shut off', 'kill the engine', 'no pressure', 'does not climb', 'doesnt climb', 'doesnt come up'] },
+        { label: 'Constant alarm sounds then silences as oil pressure climbs', say: ['constant alarm', 'alarm silences', 'alarm goes away', 'alarm stops', 'alarm quiets', 'silence'] },
+        { label: 'Display shows oil pressure in yellow until pressure climbs', say: ['yellow', 'highlighted', 'display screen', 'display', 'screen'] },
+      ],
+    },
+    {
+      id: 'hot-gauges', title: 'Hot Lap · Gauges', sub: 'Manual gauges and electronic display at normal operating levels',
+      items: [
+        { label: 'Coolant temperature climbs to 180°F, should not exceed 210°F', say: ['coolant temperature', 'coolant temp', 'engine temperature', 'engine temp', 'water temp', '180', '210', 'one eighty', 'two ten'] },
+        { label: 'Transmission temperature 160 to 220° if recently driven', say: ['transmission temperature', 'transmission temp', 'trans temp', 'tranny temp', '160', '220', 'one sixty', 'two twenty'] },
+        { label: 'System voltage 13 to 13.8 volts', say: ['system voltage', 'voltage', 'volts', '13 volts', 'thirteen', '13 8', '13 to 13 8'] },
+        { label: 'Front and rear air 100 to 120 psi', say: ['air pressure', 'front and rear air', 'front rear air', 'air', '100 to 120', '100 120', 'one hundred', 'one twenty', 'air tanks'] },
+        { label: 'Engine RPM at idle approximately 800', say: ['rpm', 'rpms', 'idle', '800', 'eight hundred', 'idle speed', 'tach', 'tachometer'] },
+        { label: 'Fuel level ¾ tank or higher', say: ['fuel', 'fuel level', 'diesel', '3 4', 'three quarters', 'three quarter', 'gas gauge', 'fuel gauge'] },
+      ],
+    },
+    {
+      id: 'hot-lights', title: 'Hot Lap · Lights', sub: 'With the spotter, then a 360 with everything on',
+      items: [
+        { label: 'Headlights and high beams', say: ['headlights', 'head lights', 'high beams', 'highbeams', 'brights', 'low beams'] },
+        { label: 'Turn signals front and rear', say: ['turn signals', 'turn signal', 'blinkers', 'blinker', 'signals', 'indicators'] },
+        { label: 'Hazard lights', say: ['hazards', 'hazard lights', 'hazard', 'flashers', 'four ways', '4 ways'] },
+        { label: 'Brake lights', say: ['brake lights', 'brake light', 'stop lights'] },
+        { label: 'Reverse lights', say: ['reverse lights', 'reverse light', 'backup lights', 'back up lights', 'reverse'] },
+        { label: 'Opticom: activate Code 3, cover the service brake, disengage the parking brake', say: ['opticom', 'opticon', 'optic com', 'optic on', 'opti com', 'preempt', 'preemption', 'traffic preemption', 'cover the brake', 'covering the brake'] },
+        { label: 'Code 3 lights plus front, left, right and rear scene lights', say: ['code 3', 'code three', 'emergency lights', 'scene lights', 'scene light', 'floods', 'flood lights'] },
+        { label: 'Exit the truck and do a 360 confirming ALL lights work', say: ['360', 'three sixty', 'walk around', 'walkaround', 'all lights', 'every light', 'lights work'] },
+        { label: 'Abnormal noises and new leaks under the truck as you walk', say: ['noises', 'abnormal noise', 'leaks', 'new leaks', 'listen', 'under the truck'] },
+        { label: 'Engineer and Captain spot lights', say: ['spot lights', 'spotlights', 'spotlight', 'spot light', 'captains spotlight', 'engineers spotlight'] },
+        { label: 'A/C or heat operational depending on season', say: ['ac', 'a c', 'air conditioning', 'air conditioner', 'heat', 'heater', 'climate', 'hvac'] },
+        { label: 'System voltage holds 13+ volts with all lights on (may go to high idle)', say: ['voltage', 'volts', '13 volts', 'thirteen volts', 'high idle', 'system voltage', 'holds voltage', 'maintains voltage'] },
+      ],
+    },
+    {
+      id: 'hot-audible', title: 'Hot Lap · Audible Devices', sub: 'Away from all personnel, in an open area',
+      items: [
+        { label: 'Test away from personnel in an open area', say: ['away from personnel', 'away from people', 'open area', 'outside', 'clear of people', 'nobody around', 'no one around', 'clear the area'] },
+        { label: 'Electric siren, Q-siren, air horn', say: ['electric siren', 'siren', 'q siren', 'queue siren', 'cue siren', 'q', 'air horn', 'air horns', 'horns'] },
+        { label: 'Selector switch position; electric horn from the steering wheel switch', say: ['selector switch', 'selector', 'switch position', 'electric horn', 'horn button', 'steering wheel', 'steering wheel horn', 'city horn'] },
+        { label: 'Driver window down, listen for abnormal noises with the truck in motion', say: ['window down', 'roll the window down', 'roll down the window', 'in motion', 'moving', 'drive it', 'listen', 'noises'] },
+      ],
+    },
+    {
+      id: 'pump', title: 'Pump Check', sub: 'Follow the pump check guidelines for the apparatus (Target Solutions, File Center, Acting Engineer)',
+      items: [
+        { label: 'Follow the pump check guidelines for the specified apparatus', say: ['pump check guidelines', 'guidelines', 'target solutions', 'file center', 'acting engineer', 'engage the pump', 'pump engaged', 'pump in gear', 'put it in pump'] },
+        { label: '60 second 150 psi check', say: ['150 psi', '150', 'one fifty', '60 seconds', '60 second', 'sixty seconds', 'one minute'] },
+        { label: 'Governor should not raise RPM to hold pressure; pressure should not fluctuate', say: ['governor', 'rpm', 'rpms', 'fluctuate', 'fluctuating', 'holds pressure', 'hold pressure', 'steady', 'pressure steady', 'rpm should not'] },
+        { label: 'Walk around and check under the pump for leaks, noises, vibrations', say: ['under the pump', 'pump leaks', 'leaks', 'vibrations', 'vibration', 'noises', 'walk around', 'walkaround', 'pump house'] },
+        { label: 'Return the pump panel to ready state and confirm', say: ['pump panel', 'ready state', 'panel ready', 'return the panel', 'reset the panel', 'valves closed', 'tank fill', 'drains'] },
+        { label: 'Transmission to Neutral, speedometer drops to 0', say: ['transmission to neutral', 'transmission in neutral', 'transmission neutral', 'speedometer', 'speedo', 'drops to zero', 'drops to 0', 'speed zero'] },
+        { label: 'Pump shift lever to Neutral, wait 5 seconds, then to Road', say: ['pump shift', 'pump shift lever', 'shift lever', 'road', 'road mode', '5 seconds', 'five seconds', 'wait 5', 'disengage the pump', 'pump out of gear', 'pump disengaged'] },
+        { label: 'Confirm the transmission engages by shifting to Drive', say: ['drive', 'shift to drive', 'shift into drive', 'into drive', 'transmission engages', 'transmission engaged', 'ready to respond'] },
+      ],
+    },
+    {
+      id: 'air-setup', title: 'Air System / Brake Test · Setup and Low PSI Recovery', sub: 'Chocks against the left rear tires before starting',
+      items: [
+        { label: 'Wheel chocks against the left rear tires', say: ['chocks', 'chock', 'wheel chocks', 'left rear', 'chock the wheels'] },
+        { label: 'Park brake engaged', say: ['park brake', 'parking brake', 'brake set', 'brake engaged', 'brake is set', 'set the brake'] },
+        { label: 'Engine running, front and rear air at 100 to 120 psi', say: ['engine running', 'running', 'air pressure', 'front and rear air', '100 to 120', '100 120', 'air up', 'built up', 'full air', 'aired up'] },
+        { label: 'Seat belt fastened', say: ['seat belt', 'seatbelt', 'buckle', 'buckled', 'buckle up', 'belt on'] },
+        { label: 'Pump the service brake fully, 3 to 5 pumps, just until the low air alarm sounds (about 75 psi)', say: ['pump the brake', 'pump the brakes', 'pump the service brake', 'service brake', 'foot brake', '3 to 5', 'three to five', 'low air alarm', 'low air', 'alarm sounds', '75 psi', '75', 'seventy five'] },
+        { label: 'At idle, let the system recover; both tanks recover equally', say: ['idle', 'at idle', 'recover', 'recovers', 'recovery', 'both tanks', 'equally', 'evenly', 'together', 'same rate'] },
+        { label: 'Low air alarm silences and pressure returns above 90 psi within 30 seconds', say: ['alarm silences', 'alarm goes off', 'alarm stops', 'alarm quiets', '90 psi', '90', 'ninety', 'above 90', '30 seconds', 'thirty seconds', 'within 30'] },
+      ],
+    },
+    {
+      id: 'air-popout', title: 'Air System / Brake Test · Pop-Out Test', sub: 'Emergency valve and low air alarms',
+      items: [
+        { label: 'Stop the engine, ignition back ON, do not start the truck', say: ['stop the engine', 'shut off the engine', 'shut down', 'engine off', 'kill the engine', 'ignition on', 'key on', 'ignition back on', 'do not start', 'dont start'] },
+        { label: 'Disengage the parking brake (push in)', say: ['disengage the parking brake', 'release the parking brake', 'push in', 'push in the brake', 'push the button in', 'parking brake off', 'park brake off', 'release the brake', 'brake in', 'knob in'] },
+        { label: 'Pump the service brake, watching for pressure to drop below 75', say: ['pump the brake', 'pump the brakes', 'pump the service brake', 'service brake', 'foot brake', 'below 75', '75', 'seventy five', 'pressure drops'] },
+        { label: 'Interior warning alarm sounds constantly', say: ['warning alarm', 'interior alarm', 'inside alarm', 'alarm constant', 'constant alarm', 'buzzer', 'alarm in the cab', 'cab alarm'] },
+        { label: 'Low air warning light on both the front and rear gauges', say: ['warning light', 'low air light', 'low air lights', 'lights on both', 'both gauges', 'front and rear gauges', 'front and rear lights', 'gauges light up'] },
+        { label: 'Exterior audible alarm tone sounds', say: ['exterior alarm', 'exterior tone', 'outside alarm', 'external alarm', 'audible tone', 'tone', 'outside'] },
+        { label: 'Continue to quickly and fully pump the service brake', say: ['continue pumping', 'keep pumping', 'keep pumping the brake', 'pump quickly', 'fully pump', 'continue'] },
+        { label: 'At about 30 to 40 psi the parking brake automatically activates (pops out)', say: ['pops out', 'pop out', 'pop', 'popped', 'automatically activates', 'brake activates', 'brake applies', 'brake sets itself', '30 to 40', '30 40', 'thirty to forty', 'thirty forty', '40 psi', '30 psi'] },
+        { label: 'Parking brake must activate above 25 psi', say: ['above 25', '25 psi', '25', 'twenty five', 'must activate', 'has to activate'] },
+      ],
+    },
+    {
+      id: 'air-recovery', title: 'Air System / Brake Test · Air Recovery', sub: 'Engine restart and build-up',
+      items: [
+        { label: 'Start the engine', say: ['start the engine', 'start the truck', 'start it', 'fire it up', 'restart', 'start'] },
+        { label: 'High idle, or throttle to 1500 RPM', say: ['high idle', 'throttle', '1500', 'fifteen hundred', '1500 rpm', 'rpm', 'rpms', 'bring up the rpm', 'bring the rpms up'] },
+        { label: 'Front and rear air recover to 100 to 120 psi within 90 seconds', say: ['recover', 'recovers', 'recovery', 'front and rear air', 'front and rear', '100 to 120', '100 120', '90 seconds', 'ninety seconds', 'within 90', 'builds up', 'build up', 'builds'] },
+        { label: 'Hold 1500 RPM until pressure stops climbing; governor cuts out at 90 to 100 psi', say: ['stops climbing', 'stop climbing', 'governor', 'cuts out', 'cut out', 'cut off', '90 to 100', '90 100', 'ninety to one hundred', 'hold 1500', 'keep it at 1500', 'keep the rpm'] },
+        { label: 'Pressure should not climb above 120 psi', say: ['above 120', 'not above 120', 'over 120', 'not exceed 120', '120', 'one twenty', 'max 120', 'maximum'] },
+      ],
+    },
+    {
+      id: 'brake-test', title: 'Air System / Brake Test · Parking Brake Test', sub: 'Confirm the parking brake is engaged first',
+      items: [
+        { label: 'Confirm the parking brake is engaged', say: ['parking brake engaged', 'park brake engaged', 'parking brake set', 'brake set', 'brake is set', 'parking brake', 'park brake', 'confirm the brake'] },
+        { label: 'Move the forward wheel chock about 3″ away from the tire', say: ['move the chock', 'move the chocks', 'forward chock', 'front chock', '3 inches', 'three inches', '3 inch', 'three inch', 'away from the tire', 'chock forward', 'chock out'] },
+        { label: 'Return to the cab and buckle the seat belt', say: ['return to the cab', 'back in the cab', 'get in the cab', 'in the cab', 'buckle', 'buckled', 'seat belt', 'seatbelt', 'belt on'] },
+        { label: 'Transmission into Drive, engine at idle', say: ['drive', 'into drive', 'shift to drive', 'shift into drive', 'idle', 'at idle', 'leave it at idle', 'dont touch the throttle'] },
+        { label: 'Release the service brake (foot brake)', say: ['release the service brake', 'release the brake', 'foot off the brake', 'foot brake', 'service brake', 'let off the brake', 'take your foot off'] },
+        { label: 'Truck should NOT move forward', say: ['should not move', 'shouldnt move', 'does not move', 'doesnt move', 'no movement', 'stays put', 'holds', 'truck holds', 'doesnt roll', 'no roll', 'stays still'] },
+        { label: 'Transmission to Neutral', say: ['neutral', 'back to neutral', 'shift to neutral', 'into neutral'] },
+        { label: 'Verify the truck has not moved forward onto the wheel chock', say: ['hasnt moved', 'didnt move', 'not moved forward', 'moved onto', 'onto the chock', 'on the chock', 'look at the chock', 'gap', 'still 3 inches', 'verify'] },
+        { label: 'Stow the wheel chocks', say: ['stow the chocks', 'stow chocks', 'put the chocks away', 'chocks away', 'pick up the chocks', 'remove the chocks', 'chocks up', 'stow'] },
+      ],
+    },
+    {
+      id: 'complete', title: 'Ops Check Complete', sub: 'Close it out',
+      items: [
+        { label: 'Address issues with Resource, Fleet Manager or Company Officer as appropriate', say: ['resource', 'fleet manager', 'fleet', 'company officer', 'address issues', 'address any issues', 'report issues', 'put in a ticket', 'work order'] },
+        { label: 'Set appropriate alerts in PSTrax', say: ['pstrax', 'ps trax', 'ps tracks', 'p s tracks', 'ps track', 'pstracks', 'alerts', 'alert', 'log it', 'document', 'documentation'] },
+        { label: 'Confirm with the Captain the truck is operational and in a ready state', say: ['confirm with the captain', 'tell the captain', 'let the captain know', 'notify the captain', 'captain', 'in service', 'ready state', 'operational', 'truck is ready', 'good to go', 'ready to go'] },
       ],
     },
   ];
@@ -374,18 +614,43 @@
   }
   function same(a, b) {
     if (a === b) return true;
-    if (a.length < 3 || b.length < 3) return false;
+    if (a.length < 3 || b.length < 3 || Math.abs(a.length - b.length) > 2) return false;
     return a.startsWith(b) || b.startsWith(a);
   }
-  // every phrase word appears inside a window of the transcript, in any order
+  // every phrase word appears inside a window of the transcript, in any order;
+  // returns the transcript positions used, or null
   function phraseIn(phrase, spoken) {
-    if (!phrase.length || spoken.length < phrase.length) return false;
+    if (!phrase.length || spoken.length < phrase.length) return null;
     const span = phrase.length + 2;
     for (let i = 0; i + phrase.length <= spoken.length; i++) {
-      const win = spoken.slice(i, i + span);
-      if (phrase.every(p => win.some(s => same(p, s)))) return true;
+      const end = Math.min(spoken.length, i + span);
+      const pos = [];
+      for (const p of phrase) {
+        let k = -1;
+        for (let j = i; j < end; j++) if (!pos.includes(j) && same(p, spoken[j])) { k = j; break; }
+        if (k < 0) break;
+        pos.push(k);
+      }
+      if (pos.length === phrase.length) return pos;
     }
-    return false;
+    return null;
+  }
+  // tick the items an utterance calls out. Longer phrases claim their words first, so
+  // "stow the chocks" ticks the stow item without also ticking a bare "chocks" item.
+  function match(items, compiled, spoken, already) {
+    const cands = [];
+    items.forEach((_, i) => {
+      if (already[i]) return;
+      compiled[i].forEach(p => { const pos = phraseIn(p, spoken); if (pos) cands.push({ i, len: p.length, pos }); });
+    });
+    cands.sort((a, b) => b.len - a.len);
+    const used = new Set(), ticked = [];
+    for (const c of cands) {
+      if (ticked.includes(c.i) || c.pos.some(x => used.has(x))) continue;
+      c.pos.forEach(x => used.add(x));
+      ticked.push(c.i);
+    }
+    return ticked;
   }
   function compile(item) {
     return [item.label, ...(item.say || [])].map(words).filter(p => p.length);
@@ -478,16 +743,12 @@
   // ---------- scoring ----------
   function score(text) {
     if (graded) return;
-    const spoken = words(text);
     const cur = CHECKS[idx];
-    cur.items.forEach((item, i) => {
-      if (hits[i]) return;
-      if (compiled[i].some(p => phraseIn(p, spoken))) {
-        hits[i] = true;
-        $('last').innerHTML = 'Heard <b>' + esc(item.label) + '</b>';
-        markItem(i);
-      }
-    });
+    for (const i of match(cur.items, compiled, words(text), hits)) {
+      hits[i] = true;
+      $('last').innerHTML = 'Heard <b>' + esc(cur.items[i].label) + '</b>';
+      markItem(i);
+    }
     $('hits').textContent = hits.filter(Boolean).length;
   }
   function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -510,9 +771,16 @@
     hits = cur.items.map(() => false);
     finalText = ''; interimText = ''; graded = false; listShown = false;
 
-    $('photo').src = cur.image;
-    $('photo').alt = cur.title;
+    if (cur.image) {
+      $('photo').src = cur.image; $('photo').alt = cur.title;
+      $('photo').hidden = false; $('nophoto').hidden = true;
+    } else {
+      $('photo').removeAttribute('src'); $('photo').hidden = true;
+      $('nophoto').hidden = false;
+      $('nophoto').innerHTML = esc(cur.title) + '<small>Photo coming</small>';
+    }
     $('cap').innerHTML = esc(cur.title) + (cur.sub ? '<small>' + esc(cur.sub) + '</small>' : '');
+    $('jump').value = String(idx);
     $('panel-sub').textContent = cur.items.length + ' items. Say them in any order.';
     $('total').textContent = cur.items.length;
     $('hits').textContent = '0';
@@ -590,6 +858,8 @@
     results.length = 0;
     show(0);   // rec.start() from this tap is what makes the phone ask for the microphone
   });
+  $('jump').innerHTML = CHECKS.map((c, n) => '<option value="' + n + '">' + (n + 1) + '. ' + esc(c.title) + '</option>').join('');
+  $('jump').addEventListener('change', () => { if (!graded) grade(); show(Number($('jump').value)); });
   $('restart').addEventListener('click', () => { if (!graded) listen(); });
   $('done').addEventListener('click', grade);
   $('peek').addEventListener('click', () => {

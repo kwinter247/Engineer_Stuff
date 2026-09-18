@@ -24,7 +24,11 @@ Slides are the `CHECKS` array in `opscheck.html`:
 
 The label always counts; `say` lists extra wording that also counts. Matching drops filler words (the, my, is, check…) and word endings, and accepts the phrase's words in any order within a short window, so "chock the wheels", "wheels are chocked" and "wheel chocks" all match `chock wheels`. Number words become digits ("four inch" matches "4 inch").
 
-Speech recognition works in Chrome on Android and Safari on iPhone, and needs the page served over HTTPS (GitHub Pages is fine). Firefox does not support it. The current slide is a placeholder until the real photos and lists are added.
+Speech recognition works in Chrome on Android and Safari on iPhone, and needs the page served over HTTPS (GitHub Pages is fine). Firefox does not support it.
+
+The slides follow the Glendale Fire Department Engineer Operational Check (Rev 10/2024): General Condition, the Cold Lap split into body and lights, front, rear, top, interior, tires, suspension, fluids, belts and electrical, the Hot Lap split into start up, gauges, lights and audible devices, the Pump Check, the Air System / Brake Test split into setup and low PSI recovery, pop-out test, air recovery and parking brake test, and the close-out. Slides without a photo yet show a placeholder; add `image: 'ops-xxx.jpg'` to the slide when the photo is in. A **Jump to** picker skips straight to any slide.
+
+When an utterance fits more than one item, the longest matching phrase claims its words first, so "stow the chocks" ticks the stow item and not a bare "chocks" item on the same slide.
 
 # Hydraulics Trainer
 
