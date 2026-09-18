@@ -1,4 +1,32 @@
-# Fire Engineer Hydraulics Trainer
+# Engine 150 Trainer
+
+Two phone-friendly drills behind one link. `index.html` is the menu.
+
+| Page | Drill |
+| --- | --- |
+| `hydraulics.html` | Pump discharge pressure evolutions (below). |
+| `opscheck.html` | Ops Check: look at a photo, call out the checklist, the page listens and shows what was missed. |
+
+## Ops Check
+
+Each slide is a photo with a checklist. Tapping **Enable microphone** starts the browser's speech recognition (the phone asks to allow the microphone once), and the page listens while the user talks. Items are ticked as they are heard; the list stays hidden until **Done** so it works as a memory check, and **Show the list** reveals it early. **Done** shows the missed items in red under the photo. **Next** and **Previous** clear the slide and restart the microphone; **Finish** shows a summary of every slide. **What I heard** shows the raw transcript, which is useful for tuning the accepted wording.
+
+Slides are the `CHECKS` array in `opscheck.html`:
+
+```js
+{
+  id: 'brake', title: 'Cab', sub: 'Before leaving the seat', image: 'ops-cab.jpg',
+  items: [
+    { label: 'Parking brake set', say: ['brake set', 'parking brake'] },
+  ],
+}
+```
+
+The label always counts; `say` lists extra wording that also counts. Matching drops filler words (the, my, is, check…) and word endings, and accepts the phrase's words in any order within a short window, so "chock the wheels", "wheels are chocked" and "wheel chocks" all match `chock wheels`. Number words become digits ("four inch" matches "4 inch").
+
+Speech recognition works in Chrome on Android and Safari on iPhone, and needs the page served over HTTPS (GitHub Pages is fine). Firefox does not support it. The current slide is a placeholder until the real photos and lists are added.
+
+# Hydraulics Trainer
 
 A single-page app for practicing pump discharge pressure (PDP) calculations, using Glendale Fire Department hydraulics values.
 
@@ -50,7 +78,7 @@ Friction loss for 4″ supply at 500 gpm: Q = 5, so 5 × 4 ÷ 4 = 5 psi per 100�
 
 ## Reference values in the app
 
-Encoded in the `REF` object in `index.html`, from the Glendale hydraulics sheet:
+Encoded in the `REF` object in `hydraulics.html`, from the Glendale hydraulics sheet:
 
 - Nozzle pressures and flows (1¾″ and 2½″ smooth bore handlines, master streams, penetrating nozzle, blitz nozzles).
 - Rule of Eights stack tips at 80 psi: 1¼″ 400 gpm through 2″ 1000 gpm.
@@ -70,11 +98,11 @@ The answers are computed from these tables, not hard-coded, so adding a line wit
 
 ## Running it
 
-Open `index.html` in a browser. There is no build step and no dependencies beyond Google Fonts. Keep the `scene-*.jpg` files next to it; each is a reference photo with the attack line recolored yellow and any spray removed, and the page draws the water and spray as SVG over it.
+Open `index.html` in a browser and pick a drill. There is no build step and no dependencies beyond Google Fonts. Keep the `scene-*.jpg` files next to it; each is a reference photo with the attack line recolored yellow and any spray removed, and the page draws the water and spray as SVG over it.
 
 ## Adding an evolution
 
-Add an entry to `SCENARIOS` in `index.html`:
+Add an entry to `SCENARIOS` in `hydraulics.html`:
 
 ```js
 {

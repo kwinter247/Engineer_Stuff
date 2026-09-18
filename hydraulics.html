@@ -1,0 +1,1077 @@
+<title>Engine 150 Pump Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --ground: #EEF0F3;
+    --surface: #FFFFFF;
+    --ink: #1B2230;
+    --ink-soft: #5A6474;
+    --line: #D3D8E0;
+    --yellow: #F5C12E;
+    --yellow-deep: #D9A417;
+    --navy: #1E3556;
+    --water: #5DB7F0;
+    --water-deep: #2C8FD6;
+    --panel: #1C2027;
+    --panel-edge: #2C323C;
+    --panel-text: #E9ECF1;
+    --panel-muted: #8E97A6;
+    --good: #2F9E5B;
+    --bad: #C8392B;
+    --shadow: rgba(20, 24, 32, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #14181F;
+      --surface: #1C2129;
+      --ink: #E6E9EE;
+      --ink-soft: #9AA3B2;
+      --line: #2E3541;
+      --shadow: rgba(0, 0, 0, .45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #14181F;
+    --surface: #1C2129;
+    --ink: #E6E9EE;
+    --ink-soft: #9AA3B2;
+    --line: #2E3541;
+    --shadow: rgba(0, 0, 0, .45);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Barlow", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    padding-inline: 16px;
+    padding-block: 20px 48px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+  h1 {
+    margin: 0;
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800;
+    font-size: clamp(30px, 4.5vw, 42px);
+    letter-spacing: .01em;
+    text-transform: uppercase;
+    line-height: 1;
+    text-wrap: balance;
+  }
+  h1 em { font-style: normal; color: var(--navy); }
+  :root[data-theme="dark"] h1 em { color: var(--yellow); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) h1 em { color: var(--yellow); } }
+  .sub { color: var(--ink-soft); margin: 0; font-size: 15px; }
+
+  /* evolution tabs */
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tab {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 17px; letter-spacing: .04em; text-transform: uppercase;
+    background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px;
+    padding: 7px 14px; cursor: pointer; display: flex; gap: 8px; align-items: baseline;
+  }
+  .tab small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; text-transform: none; letter-spacing: 0; }
+  .tab[aria-selected="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .tab:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
+
+  .progress {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--navy);
+  }
+  :root[data-theme="dark"] .progress { color: var(--yellow); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .progress { color: var(--yellow); } }
+  .progress small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
+  .progress .dots { display: flex; gap: 5px; margin-left: auto; }
+  .progress .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: block; }
+  .progress .dots i.done { background: var(--ink-soft); }
+  .progress .dots i.now { background: var(--yellow); box-shadow: 0 0 0 2px var(--navy); }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+  .layout.multi { grid-template-columns: 1fr; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  /* ---------- scene ---------- */
+  .scene {
+    position: relative;
+    background: #8f8b84;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 var(--line);
+  }
+  .scene svg { display: block; width: 100%; height: auto; }
+
+  /* result strip: sits under the photo so the animation is never covered */
+  .verdict {
+    display: none;
+    padding: 10px 18px 11px;
+    color: #fff;
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .verdict small {
+    display: block;
+    font-family: "Barlow", sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: 0;
+    text-transform: none;
+    opacity: .92;
+    white-space: normal;
+  }
+  .verdict.show { display: block; animation: rise .25s ease; }
+  .verdict.bad { background: var(--bad); }
+  .verdict.good { background: var(--good); }
+  .verdict.shake { animation: rise .25s ease, shake .45s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+  @keyframes shake {
+    0%, 100% { transform: none; }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+  }
+
+  /* water: each line group carries --dur (fill time) */
+  .water { opacity: 0; }
+  .line.charged .water { opacity: 1; stroke-dashoffset: 0 !important; transition: stroke-dashoffset var(--dur) linear, opacity .1s; }
+  .stream { opacity: 0; transition: opacity .5s ease; }
+  .line.charged .stream { opacity: 1; transition-delay: calc(var(--dur) - .1s); }
+  .drop { stroke-dasharray: 22 34; animation: drop 1s linear infinite; }
+  .drop.d2 { animation-duration: .85s; stroke-dasharray: 16 30; }
+  .drop.d3 { animation-duration: 1.2s; stroke-dasharray: 28 40; }
+  .drop.d4 { animation-duration: .95s; stroke-dasharray: 12 26; }
+  @keyframes drop { to { stroke-dashoffset: -56; } }
+  .drop.arc { stroke-dasharray: 46 74; animation: dropArc .9s linear infinite; }
+  .drop.arc.d2 { animation-duration: 1.1s; stroke-dasharray: 30 60; }
+  .drop.arc.d3 { animation-duration: .8s; stroke-dasharray: 38 82; }
+  @keyframes dropArc { to { stroke-dashoffset: -120; } }
+  .mist { animation: mist 2.2s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  .mist.m2 { animation-delay: -.8s; }
+  .mist.m3 { animation-delay: -1.5s; }
+  @keyframes mist { 0%, 100% { opacity: .35; transform: scale(.9); } 50% { opacity: .75; transform: scale(1.12); } }
+  @media (prefers-reduced-motion: reduce) {
+    .line.charged .water, .stream { transition: none; }
+    .drop, .mist { animation: none; }
+    .verdict.shake { animation: none; }
+  }
+
+  /* ---------- wrong-answer alert ---------- */
+  .alert {
+    position: fixed; inset: 0; z-index: 50;
+    display: none; align-items: center; justify-content: center;
+    padding: 24px;
+    background: rgba(120, 10, 10, .55);
+  }
+  .alert.show { display: flex; }
+  .alert-box {
+    width: min(720px, 100%);
+    background: #C8392B; color: #fff;
+    border: 6px solid #fff; border-radius: 10px;
+    padding: 34px 32px 28px; text-align: center;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5);
+    animation: flash .5s steps(1) infinite;
+  }
+  .alert-box .eyebrow {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 26px; letter-spacing: .3em; text-transform: uppercase;
+    opacity: .95;
+  }
+  .alert-box .msg {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 800;
+    font-size: clamp(34px, 6vw, 64px); line-height: 1.05; margin: 14px 0 8px; text-wrap: balance;
+  }
+  .alert-box .fish { font-size: clamp(40px, 8vw, 84px); line-height: 1; margin: 6px 0 14px; }
+  .alert-box button {
+    background: #fff; color: #C8392B; border-color: #fff; font-size: 20px; padding: 10px 24px; margin: 6px auto 0;
+  }
+  @keyframes flash { 0%, 100% { background: #C8392B; border-color: #fff; } 50% { background: #7A1410; border-color: #FFD24A; } }
+  @media (prefers-reduced-motion: reduce) { .alert-box { animation: none; } }
+
+  .sound {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+    background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px;
+    padding: 5px 12px; margin-left: auto; display: flex; gap: 6px; align-items: center;
+  }
+  .sound[aria-pressed="false"] { text-decoration: line-through; opacity: .7; }
+  .menu {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink-soft); text-decoration: none; border: 1px solid var(--line); border-radius: 4px; padding: 5px 12px; margin-left: auto;
+  }
+  .menu:hover { color: var(--ink); border-color: var(--ink-soft); }
+  .menu + .sound { margin-left: 0; }
+
+  /* ---------- pump panel (stacked worksheet) ---------- */
+  .panel {
+    background: var(--panel);
+    color: var(--panel-text);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 16px 18px 18px;
+    display: grid;
+    gap: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 10px 30px var(--shadow);
+  }
+  .panel-head { border-bottom: 1px solid var(--panel-edge); padding-bottom: 12px; display: grid; gap: 4px; }
+  .panel-title {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800; font-size: 22px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--yellow); line-height: 1.1;
+  }
+  .panel-sub { color: var(--panel-muted); font-size: 13px; }
+  .formula {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px; color: var(--panel-muted); letter-spacing: .02em; margin-top: 4px;
+  }
+  .formula b { color: var(--panel-text); font-weight: 600; }
+
+  .stacks { display: grid; gap: 18px; }
+  .multi .stacks { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .stack { display: grid; gap: 8px; align-content: start; }
+  .stack-head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 18px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--panel-text);
+  }
+  .stack-head > span:first-child { display: grid; }
+  .stack-head small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 12.5px; letter-spacing: 0; text-transform: none; color: var(--panel-muted); }
+  .stack-head .state { font-size: 12px; letter-spacing: .08em; padding: 2px 7px; border-radius: 3px; color: #fff; }
+  .stack-head .state.good { background: var(--good); }
+  .stack-head .state.bad { background: var(--bad); }
+  .term {
+    display: grid;
+    grid-template-columns: 18px 1fr 108px;
+    align-items: center;
+    gap: 8px;
+  }
+  .term .op {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 26px; line-height: 1;
+    color: var(--panel-muted); text-align: center;
+  }
+  .term label { display: grid; line-height: 1.15; }
+  .term label b {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--yellow);
+  }
+  .term label small { color: var(--panel-muted); font-size: 12.5px; letter-spacing: .02em; }
+  .term input {
+    width: 100%;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 22px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--panel-text);
+    background: #0F1217;
+    border: 1px solid #3A414D;
+    border-radius: 4px;
+    padding: 7px 10px;
+    text-align: right;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  .term input::-webkit-outer-spin-button, .term input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .term input::placeholder { color: #4B5361; font-weight: 500; }
+  .term input:focus { border-color: var(--yellow); box-shadow: 0 0 0 3px rgba(245,193,46,.25); }
+  .term input.wrong { border-color: var(--bad); box-shadow: 0 0 0 3px rgba(200,57,43,.3); }
+
+  .rule { border: 0; border-top: 2px solid var(--panel-muted); margin: 2px 0 0; }
+  .engine { grid-column: 1 / -1; border-top: 2px solid var(--yellow); padding-top: 12px; margin-top: 4px; }
+  .engine .term { grid-template-columns: 18px 1fr 140px; max-width: 520px; }
+  .engine .term label b { color: var(--yellow); font-size: 22px; }
+  .engine .term input { font-size: 26px; color: var(--yellow); }
+  .term.total label b { color: var(--water); }
+  .term.total .val {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 28px; font-weight: 600; line-height: 1;
+    font-variant-numeric: tabular-nums;
+    background: #0F1217; border: 1px solid #3A414D; border-radius: 4px;
+    padding: 8px 10px; text-align: right;
+    color: var(--yellow);
+    display: flex; justify-content: flex-end; align-items: baseline; gap: 6px;
+  }
+  .term.total .val small { font-size: 12px; color: var(--panel-muted); font-weight: 500; }
+
+  .actions { display: grid; gap: 10px; }
+  @media (min-width: 700px) { .multi .actions { grid-template-columns: auto auto auto 1fr; align-items: center; } }
+  button {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
+    border-radius: 4px; padding: 10px 20px; cursor: pointer; border: 1px solid transparent;
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+  }
+  button:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
+  .charge { background: var(--yellow); color: #1B1600; border-color: var(--yellow-deep); font-size: 19px; padding: 10px 12px; white-space: nowrap; }
+  .charge:hover { background: #FFCD3F; }
+  .charge:active { transform: translateY(1px); }
+  .reset { background: transparent; color: var(--panel-muted); border-color: #3A414D; font-size: 17px; padding: 8px 16px; }
+  .reset:hover { color: var(--panel-text); border-color: var(--panel-muted); }
+  .teach { background: transparent; color: var(--water); border-color: rgba(93,183,240,.45); font-size: 17px; padding: 8px 16px; }
+  .nav { display: grid; gap: 8px; border-top: 1px solid var(--panel-edge); padding-top: 10px; margin-top: 2px; }
+  @media (min-width: 700px) { .multi .nav { grid-template-columns: 1fr 1fr; } }
+  .next {
+    background: var(--navy); color: #fff; border-color: #2B4A78; width: 100%; min-width: 0; overflow: hidden;
+    justify-content: space-between; text-align: left; padding: 11px 16px;
+  }
+  .next > span:first-child { min-width: 0; }
+  .next.prev { background: transparent; color: var(--panel-text); border-color: #3A414D; flex-direction: row-reverse; text-align: right; }
+  .next.prev:hover { border-color: var(--panel-muted); background: rgba(255,255,255,.04); }
+  .next:hover { background: #274571; }
+  .next small { display: block; font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 0; text-transform: none; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .next .arrow { font-family: "Barlow", sans-serif; font-size: 22px; line-height: 1; }
+  .teach:hover { background: rgba(93,183,240,.12); border-color: var(--water); }
+  .work h3 .tag { font-size: 11px; letter-spacing: .1em; color: var(--water); margin-left: 8px; }
+  kbd {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600;
+    background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.15); border-radius: 3px;
+    padding: 1px 6px; letter-spacing: 0;
+  }
+  .hint { color: var(--panel-muted); font-size: 13.5px; text-align: center; margin: 0; }
+  @media (min-width: 700px) { .multi .hint { text-align: left; } }
+
+  /* worked solution */
+  .work { display: none; border-top: 1px solid var(--panel-edge); padding-top: 12px; gap: 12px; }
+  .work.show { display: grid; }
+  .multi .work.show { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .work h3 { margin: 0 0 6px; font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--panel-muted); }
+  .work ol { margin: 0; padding-left: 18px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; line-height: 1.7; color: var(--panel-text); }
+  .work ol b { color: var(--yellow); font-weight: 600; }
+
+  /* reference drawer */
+  details.ref { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 0 18px; }
+  details.ref summary {
+    cursor: pointer; padding: 12px 0; list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 18px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  details.ref summary::-webkit-details-marker { display: none; }
+  details.ref summary small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
+  details.ref summary::after { content: "Show"; font-size: 13px; letter-spacing: .06em; color: var(--ink-soft); margin-left: auto; }
+  details.ref[open] summary::after { content: "Hide"; }
+  .ref-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 28px; padding: 4px 0 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .ref-grid h3 { margin: 0 0 8px; font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--navy); }
+  :root[data-theme="dark"] .ref-grid h3 { color: var(--yellow); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ref-grid h3 { color: var(--yellow); } }
+  .ref-grid table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .ref-grid td { padding: 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .ref-grid td + td { text-align: right; white-space: nowrap; padding-left: 12px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; }
+  .ref-grid .eq { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; margin: 0 0 8px; color: var(--ink); }
+  .ref-grid p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+
+  .notes { color: var(--ink-soft); font-size: 14px; max-width: 65ch; margin: 0; }
+  .notes b { color: var(--ink); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Engine 150 <em>Pump Trainer</em></h1>
+    <p class="sub">Work the hydraulics, charge the line. Glendale Fire Department values.</p>
+    <a class="menu" href="index.html">‹ Menu</a>
+    <button type="button" class="sound" id="sound" aria-pressed="true">🔊 Sound</button>
+  </header>
+
+  <div class="tabs" role="tablist" id="tabs" hidden></div>
+  <div class="progress" id="progress"></div>
+
+  <div class="layout" id="layout">
+    <section class="scene" id="scene">
+      <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="panel-title">
+      <div class="panel-head">
+        <div class="panel-title" id="panel-title">Pump Discharge Pressure</div>
+        <div class="panel-sub" id="panel-sub"></div>
+        <div class="formula"><b>PDP</b> = NP + FL + AP ± EL</div>
+      </div>
+
+      <form class="stacks" id="calc" novalidate></form>
+
+      <div class="actions">
+        <button type="button" class="charge" id="charge">Charge the line <kbd>Enter</kbd></button>
+        <button type="button" class="reset" id="reset">Reset</button>
+        <button type="button" class="teach" id="teach">Teach me</button>
+        <p class="hint" id="hint">Enter all values, then press Enter.</p>
+      </div>
+
+      <div class="work" id="work"></div>
+
+      <div class="nav">
+        <button type="button" class="next prev" id="prev"></button>
+        <button type="button" class="next" id="next"></button>
+      </div>
+    </section>
+  </div>
+
+  <details class="ref">
+    <summary>Glendale hydraulics reference <small>nozzle pressures, friction loss, appliances</small></summary>
+    <div class="ref-grid" id="ref"></div>
+  </details>
+
+  <div class="alert" id="alert" role="alertdialog" aria-modal="true" aria-labelledby="alert-msg">
+    <div class="alert-box">
+      <div class="eyebrow">Incorrect</div>
+      <div class="fish" aria-hidden="true">🐟</div>
+      <div class="msg" id="alert-msg">Carmen, you are dumber than a goldfish! Do better!</div>
+      <button type="button" id="alert-close">Try again</button>
+    </div>
+  </div>
+
+  <p class="notes"><b>How it grades.</b> Every value is checked against the answer worked from the Glendale sheet, and each line's total must match its pump discharge pressure. A correct line charges and its nozzle flows; a wrong line stays dry until you rework it.</p>
+</div>
+
+<script>
+  // ============================================================
+  // Glendale hydraulics reference (from the department sheet)
+  // ============================================================
+  const REF = {
+    nozzles: {
+      'sb-175':   { label: '1¾″ smooth bore handline', short: 'smooth bore', np: 50,  gpm: 160 },
+      'sb-250':   { label: '2½″ smooth bore handline', short: 'smooth bore', np: 50,  gpm: 300 },
+      'sb-master':{ label: 'Smooth bore master stream', np: 80,  gpm: 400, gpmMax: 1000 },
+      // Rule of Eights with stack tips (master streams): 80 psi, gpm from the tip size
+      'tip-125':  { label: '1¼″ stack tip, master stream', short: '1¼″ stack tip', np: 80, gpm: 400, group: 'tips' },
+      'tip-1375': { label: '1⅜″ stack tip, master stream', short: '1⅜″ stack tip', np: 80, gpm: 500, group: 'tips' },
+      'tip-150':  { label: '1½″ stack tip, master stream', short: '1½″ stack tip', np: 80, gpm: 600, group: 'tips' },
+      'tip-1625': { label: '1⅝″ stack tip, master stream', short: '1⅝″ stack tip', np: 80, gpm: 700, group: 'tips' },
+      'tip-175':  { label: '1¾″ stack tip, master stream', short: '1¾″ stack tip', np: 80, gpm: 800, group: 'tips' },
+      'tip-1875': { label: '1⅞″ stack tip, master stream', short: '1⅞″ stack tip', np: 80, gpm: 900, group: 'tips' },
+      'tip-2':    { label: '2″ stack tip, master stream',  short: '2″ stack tip',  np: 80, gpm: 1000, group: 'tips' },
+      'fog-master':{ label: 'Fog master stream',        short: 'fog master stream', np: 100, gpm: 1000 },
+      'penetrating':{ label: 'Penetrating nozzle',      short: 'penetrating nozzle', np: 100, gpm: 95 },
+      'blitz-fog-low':  { label: 'Blitz fog, low pressure',  short: 'low pressure fog Blitz', np: 55,  gpm: 500 },
+      'blitz-fog-high': { label: 'Blitz fog, high pressure', short: 'high pressure Blitz', np: 100, gpm: 500 },
+      'blitz-sb-1':     { label: 'Blitz smooth bore 1″',      np: 50,  gpm: 300 },
+      'blitz-sb-125':   { label: 'Blitz smooth bore 1¼″',     np: 50,  gpm: 400 },
+      'blitz-sb-150':   { label: 'Blitz smooth bore 1½″',     np: 50,  gpm: 500 },
+    },
+    // Handline hose-size factors: FL/100′ = (GPM × HS) ÷ 10 − 10
+    hs: {
+      '1.75': { label: '1¾″', hs: 3, formula: 'handline' },
+      '2.5':  { label: '2½″', hs: 1, formula: 'handline' },
+      // Master stream / supply line: FL/100′ = Q × (Q − 1) ÷ HS, Q = gpm ÷ 100, HS = 4 for 4″ supply
+      '4':    { label: '4″',  hs: 4, formula: 'master' },
+    },
+    // Elevation: half a psi for every foot of elevation, added above grade and subtracted below
+    elevation: { psiPerFoot: 0.5, psiPerFloor: 5 },   // by height: ½ psi per foot; in a building: 5 psi per floor above ground
+    appliances: {
+      'none':        { label: 'None', psi: 0 },
+      // Gated wye: no loss under 350 gpm through it, 10 psi over
+      'gated-wye':   { label: 'Gated wye', psi: 0, over: { gpm: 350, psi: 10 }, note: '10 psi only when flow through it exceeds 350 gpm' },
+      'ladder':      { label: 'Ladder', psi: 40 },
+      'stang-gun':   { label: 'Stang gun', psi: 25 },
+      'foam-eductor':{ label: 'Foam eductor', psi: 0, note: 'operating pressure 200 psi, nozzle set at 95 gpm' },
+      'pump-to-pump':{ label: 'Pump to pump', psi: 20 },
+      'blitz':       { label: 'Blitz used as a gated wye', psi: 0, over: { gpm: 350, psi: 10 }, note: 'same rule as a gated wye' },
+    },
+  };
+  function handlineFLper100(gpm, size) { return (gpm * REF.hs[size].hs) / 10 - 10; }
+  function supplyFLper100(gpm, hs) { const q = gpm / 100; return q * (q - 1) / hs; }
+
+  // Work a line from its layout: NP from the nozzle, FL from the formula, AP from the table, EL as given.
+  function solve(line) {
+    const noz = REF.nozzles[line.nozzle];
+    // A line is one hose, a series of hoses (2½″ into an appliance, then 1¾″), or piped on the engine
+    const segs = line.noHose ? [] : (line.hose || [{ length: line.length, size: line.size }]);
+    // Two supply lines to the same appliance split the flow; FL is figured for one line at half the gpm
+    const nLines = line.supplyLines || 1;
+    const flowGpm = noz.gpm / nLines;
+    const q = flowGpm / 100;
+    // A wye: the trunk (marked trunk: true) carries branches × the nozzle flow; FL is added for one branch only
+    const branches = line.branches || 1;
+    const trunkGpm = flowGpm * branches;
+    const worked = segs.map(seg => {
+      const size = REF.hs[seg.size];
+      const master = size.formula === 'master';
+      const gpm = seg.trunk ? trunkGpm : flowGpm;
+      const per100 = master ? supplyFLper100(gpm, size.hs) : handlineFLper100(gpm, seg.size);
+      return { seg, size, master, gpm, per100, fl: per100 * seg.length / 100 };
+    });
+    const fl = worked.reduce((a, x) => a + x.fl, 0);
+    const appl = REF.appliances[line.appliance || 'none'];
+    // Flow-dependent appliances (gated wye): the loss applies only above the threshold
+    const applGpm = noz.gpm * branches;   // flow through the appliance
+    const ap = appl.over && applGpm > appl.over.gpm ? appl.over.psi : appl.psi;
+    const elFt = line.elevationFt || 0;
+    // A floor number means a building: 5 psi for every floor above the ground floor
+    const floorsUp = line.floor ? line.floor - 1 : 0;
+    const el = line.floor ? floorsUp * REF.elevation.psiPerFloor : elFt * REF.elevation.psiPerFoot;
+    // Relay: the next engine is in service, so this pump only feeds its intake. No nozzle pressure,
+    // FL on the line between the engines at the downstream flow, plus pump-to-pump. Nothing past that engine counts.
+    const np = line.relay ? 0 : noz.np;
+    return {
+      np, fl, ap, el, pdp: np + fl + ap + el,
+      steps: [
+        ...(line.relay
+          ? [`NP 0 psi: ${line.relay} is in service, so this pump only feeds ${line.relay}'s intake. Everything past ${line.relay} is ${line.relay}'s to pump.`,
+             `GPM comes from what ${line.relay} is flowing: ${noz.label}, ${noz.gpm} gpm.`]
+          : [`NP ${np} psi (${noz.label}, ${noz.gpm} gpm)`]),
+        ...(line.noHose ? [`FL 0 psi: the ${(line.name || 'deck gun').toLowerCase()} is piped on the engine, no hose.`] : [
+          ...(nLines > 1 ? [`${nLines} × ${worked[0].size.label} supply lines split ${noz.gpm} gpm: ${fmt(flowGpm)} gpm each. FL is figured for one line only.`] : []),
+          ...(branches > 1 ? [`${appl.label} feeds ${branches} lines at ${noz.gpm} gpm each, so ${trunkGpm} gpm flows through the trunk. Each branch is the same, so FL is added for one branch only.`] : []),
+          ...worked.flatMap(({ seg, size, master, gpm, per100, fl: segFl }) => [
+            master
+              ? `FL/100′ ${size.label} = Q × (Q − 1) ÷ HS = ${fmt(gpm / 100)} × ${fmt(gpm / 100 - 1)} ÷ ${size.hs} = ${fmt(per100)} psi (Q = ${fmt(gpm)} ÷ 100, HS ${size.hs} for ${size.label})`
+              : `FL/100′ ${size.label} = (${fmt(gpm)} × ${size.hs}) ÷ 10 − 10 = ${fmt(per100)} psi`,
+            `FL ${size.label} = ${fmt(per100)} × ${seg.length}′ ÷ 100 = ${fmt(segFl)} psi${nLines > 1 ? ' (one line)' : seg.trunk ? ' (trunk)' : branches > 1 ? ' (one branch)' : ''}`,
+          ]),
+          ...(worked.length > 1 ? [`FL total = ${worked.map(x => fmt(x.fl)).join(' + ')} = ${fmt(fl)} psi${branches > 1 ? '' : ` (same ${fmt(flowGpm)} gpm flows through every section)`}`] : []),
+        ]),
+        appl.over
+          ? `AP ${fmt(ap)} psi (${appl.label.toLowerCase()}: ${applGpm} gpm is ${applGpm > appl.over.gpm ? 'over' : 'under'} ${appl.over.gpm} gpm)`
+          : `AP ${fmt(ap)} psi (${appl.label.toLowerCase()})`,
+        line.relay && !elFt
+          ? `EL 0 psi: ${line.relay} sits at grade. Any elevation past ${line.relay} is ${line.relay}'s to pump.`
+          : line.floor
+            ? `EL = ${floorsUp} floor${floorsUp === 1 ? '' : 's'} above ground × ${REF.elevation.psiPerFloor} = ${fmt(el)} psi (floor ${line.floor}; the ground floor counts as 0)`
+            : `EL = ${fmt(elFt)}′ × ${REF.elevation.psiPerFoot} = ${fmt(el)} psi${elFt < 0 ? ' (below grade)' : elFt > 0 ? ' (above grade)' : ''}`,
+        `PDP = ${np} + ${fmt(fl)} + ${fmt(ap)} ${el < 0 ? '−' : '+'} ${fmt(Math.abs(el))} = ${fmt(np + fl + ap + el)} psi`,
+      ],
+    };
+  }
+
+  // ============================================================
+  // Evolutions. Each line: hose layout for the math, plus the traced
+  // hose path, nozzle tip and leg mask for the water overlay.
+  // ============================================================
+  const SCENARIOS = [
+    {
+      id: 'e1', title: 'Evolution 1', sub: '150′ 1¾″ smooth bore', image: 'scene-150.jpg',
+      lines: [{
+        name: 'Line 1', length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
+        path: 'M 740 396 L 752 414 L 762 438 L 785 526 L 794 541 L 807 554 L 828 568 L 847 576 L 940 602 L 973 615 L 1005 634 L 1016 647 L 1072 674 L 1097 683 L 1134 689 L 1175 690 L 1193 687 L 1224 678 L 1249 667 L 1314 630 L 1319 624 L 1425 576',
+        tip: [1452, 563], mask: '1318,592 1412,578 1420,650 1400,720 1322,720',
+      }],
+    },
+    {
+      id: 'e2', title: 'Evolution 2', sub: '200′ 1¾″ smooth bore', image: 'scene-200.jpg',
+      lines: [{
+        name: 'Line 1', length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
+        path: 'M 546 310 L 558 328 L 582 405 L 593 420 L 609 431 L 657 444 L 777 456 L 815 463 L 848 473 L 866 487 L 869 509 L 866 519 L 858 527 L 832 540 L 765 565 L 737 585 L 732 602 L 734 617 L 739 625 L 752 634 L 771 641 L 798 646 L 911 651 L 981 666 L 1035 688 L 1093 727 L 1129 747 L 1174 763 L 1215 772 L 1252 776 L 1289 772 L 1372 743 L 1382 734 L 1470 690',
+        tip: [1482, 686], mask: '1355,725 1465,700 1478,825 1360,828',
+      }],
+    },
+    {
+      id: 'e3', title: 'Evolution 3', sub: 'Two lines, 150′ and 200′ 1¾″', image: 'scene-two.jpg',
+      lines: [{
+        name: 'Line 1', length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
+        path: 'M 550 307 L 587 368 L 608 387 L 638 402 L 692 410 L 821 407 L 850 411 L 891 424 L 905 434 L 965 464 L 1017 479 L 1053 478 L 1080 472 L 1089 465 L 1160 440',
+        tip: [1187, 435], mask: '1065,455 1165,440 1172,535 1070,535',
+      }, {
+        name: 'Line 2', length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
+        path: 'M 535 332 L 545 347 L 562 400 L 571 421 L 584 437 L 607 453 L 650 467 L 761 480 L 812 489 L 849 501 L 869 515 L 874 534 L 871 546 L 866 553 L 834 569 L 781 588 L 765 598 L 760 611 L 761 623 L 766 633 L 776 639 L 822 649 L 878 649 L 927 654 L 983 667 L 1040 691 L 1096 729 L 1124 745 L 1166 761 L 1218 773 L 1248 776 L 1283 774 L 1330 760 L 1384 737 L 1470 690',
+        tip: [1495, 687], mask: '1355,725 1465,700 1478,825 1360,828',
+      }],
+    },
+    {
+      id: 'e4', title: 'Evolution 4', sub: 'E159 supplying Ladder 152, 450′ 4″, 100′ up', image: 'scene-ladder.jpg', verdict: 'bottom',
+      lines: [{
+        name: 'E159 to L152', length: 450, size: '4', nozzle: 'tip-1375', appliance: 'ladder', elevationFt: 100,
+        // 4″ supply from E159's discharge to the ladder's inlet, then the waterway up the ladder to the tip
+        path: 'M 1284 628 L 1303 653 L 1323 692 L 1331 716 L 1331 734 L 1322 754 L 1304 771 L 1286 782 L 1250 795 L 1238 794 L 1182 802 L 1169 808 L 1125 808 L 1079 803 L 968 781 L 913 778 L 872 783 L 860 781 L 785 798 L 773 804 L 729 806 L 697 803 L 685 806 L 664 797 L 569 770 L 538 754 L 516 739 L 500 724 L 483 699 L 452 629 L 428 586 L 416 570 M 222 512 L 600 66 L 617 58',
+        tip: [617, 58], stream: 'arc', arc: { c: [290, 20], end: [623, 329] }, mask: '0,0 0,0 0,0',
+      }],
+    },
+    {
+      id: 'e5', title: 'Evolution 5', sub: 'E151 relaying 450′ + 50′ of 4″ to E152, which feeds a ladder', image: 'scene-relay.jpg',
+      lines: [{
+        name: 'E151 to E152', desc: 'relay · 500′ of 4″ · ladder flowing a 1½″ tip',
+        hose: [{ length: 450, size: '4' }, { length: 50, size: '4' }], nozzle: 'tip-150', relay: 'E152', appliance: 'pump-to-pump', elevationFt: 0,
+        // E151's 50′ to the manifold, the 450′ up to E152, E152's two 200′ lines to the ladder, then the waterway to the tip
+        path: 'M 1296 769 L 1325 783 L 1351 791 L 1389 797 L 1420 797 L 1521 774 L 1536 753 L 1540 744 M 1538 759 L 1536 732 L 1529 706 L 1486 660 L 1461 644 L 1426 627 L 1377 611 L 1332 591 L 1290 555 L 1255 515 M 924 506 L 917 515 L 868 528 L 817 533 L 753 535 L 635 523 L 578 510 L 562 504 L 557 498 M 938 527 L 879 557 L 842 569 L 777 579 L 701 582 L 615 578 L 534 568 L 497 558 L 437 536 L 404 520 M 200 520 L 560 70 L 597 58',
+        tip: [597, 58], stream: 'arc', arc: { c: [250, 20], end: [480, 230] }, mask: '0,0 0,0 0,0',
+      }],
+    },
+    {
+      id: 'e6', title: 'Evolution 6', sub: 'E151 deck gun, 2″ tip, plus 200′ 1¾″ handline', image: 'scene-deckgun.jpg', verdict: 'bottom',
+      lines: [{
+        name: 'Deck gun', desc: '2″ smooth bore tip, piped on the engine',
+        noHose: true, nozzle: 'tip-2', appliance: 'stang-gun', elevationFt: 0,
+        // waterway from the pump panel up to the gun, then the stream
+        path: 'M 555 440 L 590 380 L 630 325 L 680 280 L 705 265',
+        tip: [705, 265], stream: 'arc', arc: { c: [300, -150], end: [700, -40] }, mask: '0,0 0,0 0,0',
+      }, {
+        name: 'Handline', desc: '200′ 1¾″ · smooth bore',
+        length: 200, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
+        path: 'M 526 498 L 522 512 L 521 537 L 524 556 L 535 584 L 568 628 L 613 664 L 678 701 L 762 734 L 861 763 L 961 784 L 1074 796 L 1144 799 L 1228 797 L 1304 787 L 1353 776 L 1398 759 L 1452 725 L 1492 688 L 1560 655',
+        tip: [1615, 642], mask: '1470,675 1582,665 1588,800 1480,800',
+      }],
+    },
+    {
+      id: 'e7', title: 'Evolution 7', sub: 'E151 fog master stream, 150′ 1¾″, and 200′ 2½″ through a Blitz to 150′ 1¾″', image: 'scene-blitz.jpg',
+      lines: [{
+        name: 'Deck gun', desc: 'fog master stream, piped on the engine',
+        noHose: true, nozzle: 'fog-master', appliance: 'stang-gun', elevationFt: 0,
+        path: 'M 545 420 L 580 360 L 610 305 L 650 265 L 677 250',
+        tip: [677, 250], stream: 'arc', arc: { c: [300, -170], end: [700, -60] }, mask: '0,0 0,0 0,0',
+      }, {
+        name: 'Line 1', desc: '150′ 1¾″ · smooth bore',
+        length: 150, size: '1.75', nozzle: 'sb-175', appliance: 'none', elevationFt: 0,
+        // leaves the panel behind the cab, reappears below the front bumper
+        path: 'M 528 470 L 600 495 L 700 505 L 800 506 L 908 504 L 911 495 L 921 485 L 938 483 L 954 475 L 1052 501 L 1186 529 L 1345 550 L 1396 550 L 1442 543 L 1474 531 L 1504 509 L 1565 462',
+        tip: [1615, 455], mask: '536,430 890,430 890,560 536,560 536,430 1485,495 1590,485 1592,610 1490,610',
+      }, {
+        name: 'Line 2', desc: '200′ 2½″ → Blitz → 150′ 1¾″ · smooth bore',
+        hose: [{ length: 200, size: '2.5' }, { length: 150, size: '1.75' }], nozzle: 'sb-175', appliance: 'blitz', elevationFt: 0,
+        path: 'M 506 497 L 503 520 L 505 543 L 511 567 L 525 596 L 560 639 L 609 678 L 654 707 L 732 742 L 780 758 L 848 771 L 893 773 L 904 765 M 1061 741 L 1098 752 L 1205 808 L 1236 819 L 1285 827 L 1373 832 L 1424 825 L 1475 808 L 1510 785 L 1565 742',
+        tip: [1615, 730], mask: '1485,775 1590,765 1592,890 1490,890',
+      }],
+    },
+    {
+      id: 'e8', title: 'Evolution 8', sub: 'Standpipe: 100′ 2½″ to the FDC, 150′ 1¾″ on the 3rd floor', image: 'scene-standpipe.jpg',
+      lines: [{
+        name: 'Standpipe line', desc: '100′ 2½″ to the FDC → riser → 150′ 1¾″ on the 3rd floor · smooth bore',
+        hose: [{ length: 100, size: '2.5' }, { length: 150, size: '1.75' }], nozzle: 'sb-175', appliance: 'none', floor: 3,
+        // 2½″ from the panel to the FDC, up the riser, then the 1¾″ along the third floor
+        path: 'M 523 622 L 532 629 L 537 642 L 544 650 L 569 667 L 620 687 L 678 701 L 728 702 L 788 694 L 802 683 L 798 661 L 825 672 M 841 668 L 841 415 L 866 404 L 898 419 L 933 428 L 1137 460 L 1270 474 L 1313 474 L 1347 467 L 1395 455',
+        tip: [1423, 452], streamScale: .5, mask: '1345,425 1400,420 1402,495 1348,495',
+      }],
+    },
+    {
+      id: 'e9', title: 'Evolution 9', sub: 'E150, 300′ 2½″ to a high pressure Blitz', image: 'scene-hpblitz.jpg',
+      lines: [{
+        name: 'Blitz line', desc: '300′ 2½″ · high pressure fog Blitz',
+        length: 300, size: '2.5', nozzle: 'blitz-fog-high', appliance: 'none', elevationFt: 0,
+        path: 'M 621 541 L 626 539 L 632 542 L 648 567 L 689 597 L 721 615 L 774 637 L 832 655 L 885 666 L 950 676 L 1019 681 L 1166 681 L 1241 675 L 1295 666 L 1341 656 L 1386 641 L 1484 596 L 1540 545 L 1590 505 L 1627 480',
+        tip: [1627, 480], stream: 'arc', arc: { c: [30, -170], end: [45, -330] }, mask: '0,0 0,0 0,0',
+      }],
+    },
+    {
+      id: 'e10', title: 'Evolution 10', sub: 'E156 supplying a ladder through two 100′ 4″ lines, 1¾″ tip 100′ up', image: 'scene-dual.jpg',
+      lines: [{
+        name: 'E156 to ladder', desc: 'two 100′ 4″ supply lines · 1¾″ stack tip, 100′ up',
+        length: 100, size: '4', supplyLines: 2, nozzle: 'tip-175', appliance: 'ladder', elevationFt: 100,
+        // both 4″ lines from E156 to the ladder's inlet, then the waterway up the ladder to the tip
+        path: 'M 340 471 L 353 497 L 372 507 L 397 542 L 413 546 L 420 553 L 445 560 L 455 569 L 510 573 L 520 586 L 523 603 L 532 616 L 555 623 L 643 635 L 842 633 L 970 618 L 978 611 L 981 595 M 328 507 L 341 505 L 346 508 L 356 541 L 388 586 L 427 625 L 441 649 L 498 680 L 563 703 L 627 717 L 681 724 L 750 724 L 820 715 L 862 705 L 896 692 L 951 664 L 973 658 L 988 642 L 1006 648 M 1060 560 L 1112 522 L 1560 112 L 1640 57',
+        tip: [1640, 57], stream: 'arc', arc: { c: [35, -50], end: [60, -90] }, mask: '0,0 0,0 0,0',
+      }],
+    },
+    {
+      id: 'e11', title: 'Evolution 11', sub: 'E156: 350′ 1¾″ penetrating nozzle, and 200′ 2½″ to a gated wye with two 150′ 1¾″', image: 'scene-wye.jpg',
+      lines: [{
+        name: 'Line 1', desc: '350′ 1¾″ · penetrating nozzle',
+        length: 350, size: '1.75', nozzle: 'penetrating', appliance: 'none', elevationFt: 0,
+        // leaves the panel behind the cab, reappears at the front bumper
+        path: 'M 445 385 L 550 390 L 650 386 L 752 379 L 820 382 L 979 355 L 1290 334 L 1316 328 L 1348 313 L 1374 293 L 1392 274 L 1460 240',
+        tip: [1630, 225], streamScale: .35, masks: ['440,360 750,360 750,480 440,480', '1375,255 1470,245 1475,350 1380,350'],
+      }, {
+        name: 'Wye line', desc: '200′ 2½″ → gated wye → two 150′ 1¾″ · smooth bores',
+        hose: [{ length: 200, size: '2.5', trunk: true }, { length: 150, size: '1.75' }], branches: 2, nozzle: 'sb-175', appliance: 'gated-wye', elevationFt: 0,
+        path: 'M 442 405 L 447 447 L 455 462 L 463 504 L 480 542 L 514 587 L 548 616 L 600 641 L 661 662 L 678 656 L 700 680 M 773 689 L 781 685 L 811 688 L 856 683 L 994 651 L 1055 640 L 1276 621 L 1312 611 L 1350 596 L 1394 571 L 1403 561 L 1470 530 M 756 713 L 766 725 L 803 746 L 837 758 L 873 765 L 920 770 L 1027 770 L 1083 774 L 1308 815 L 1356 815 L 1407 804 L 1470 770',
+        tips: [[1525, 527], [1525, 770]], masks: ['1395,545 1490,535 1495,635 1400,635', '1395,790 1490,780 1495,890 1400,890'],
+      }],
+    },
+    {
+      id: 'e12', title: 'Evolution 12', sub: 'E154: 400′ 4″ up 30′ to a Blitz with low pressure fog', image: 'scene-tank.jpg',
+      lines: [{
+        name: 'Blitz line', desc: '400′ 4″ · low pressure fog Blitz · 30′ up',
+        length: 400, size: '4', nozzle: 'blitz-fog-low', appliance: 'none', elevationFt: 30,
+        path: 'M 416 693 L 426 723 L 441 753 L 469 778 L 506 792 L 551 796 L 602 791 L 650 730 L 704 629 L 708 619 L 733 602 L 781 560 L 885 493 L 918 455 L 933 428 L 946 384 L 949 353 L 947 286 L 953 260 L 962 246 L 976 234 L 1019 213 L 1080 190',
+        tip: [1130, 145], streamScale: .9, mask: '0,0 0,0 0,0',
+      }],
+    },
+    {
+      id: 'e13', title: 'Evolution 13', sub: 'E151 supplying a ladder through two 100′ 4″ lines, fog nozzle 60′ up', image: 'scene-chain.jpg',
+      lines: [{
+        name: 'E151 to ladder', desc: 'two 100′ 4″ supply lines · fog master stream, 60′ up',
+        length: 100, size: '4', supplyLines: 2, nozzle: 'fog-master', appliance: 'ladder', elevationFt: 60,
+        // both lines leave the panel behind the cab, reappear at the front, then the waterway up the ladder
+        path: 'M 612 365 L 750 400 L 900 425 L 984 437 L 992 432 L 1065 414 L 1095 402 L 1141 370 L 1157 364 L 1162 355 M 620 385 L 760 430 L 900 455 L 994 466 L 1057 455 L 1109 438 L 1122 429 L 1136 425 L 1163 404 L 1185 370 M 1313 253 L 1470 60 L 1490 40',
+        tip: [1490, 40], stream: 'arc', arc: { c: [60, -30], end: [130, -12] }, mask: '600,300 982,300 982,480 600,480',
+      }],
+    },
+  ];
+  const IMG_W = 1672, IMG_H = 941;
+  const TERMS = [
+    { key: 'np', label: 'NP', desc: 'Nozzle pressure', op: '' },
+    { key: 'fl', label: 'FL', desc: 'Friction loss', op: '+' },
+    { key: 'ap', label: 'AP', desc: 'Appliance', op: '+' },
+    { key: 'el', label: 'EL', desc: 'Elevation, ½ psi per ft', op: '±' },
+  ];
+
+  // ============================================================
+  // App state
+  // ============================================================
+  const $ = id => document.getElementById(id);
+  const tabsEl = $('tabs'), layout = $('layout'), scene = $('scene'), verdict = $('verdict');
+  const calc = $('calc'), hint = $('hint'), work = $('work'), panelSub = $('panel-sub');
+  let current = null, solved = [], lineEls = [], lineGroups = [], engineEl = null;
+  const enginePDP = () => Math.max(...solved.map(x => x.pdp));
+
+  function fmt(n) { return Number.isInteger(n) ? String(n) : (Math.round(n * 100) / 100).toString(); }
+  // Rounded answers (22.5 entered as 22 or 23) are accepted: within half a psi
+  const near = (a, b) => Math.abs(a - b) <= 0.5;
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  // ---------- tabs ----------
+  SCENARIOS.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tab'; b.role = 'tab'; b.id = 'tab-' + s.id;
+    b.innerHTML = `${esc(s.title)} <small>${esc(s.sub)}</small>`;
+    b.addEventListener('click', () => load(i));
+    tabsEl.append(b);
+  });
+
+  // ---------- scene ----------
+  function buildScene(s) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${IMG_W} ${IMG_H}`);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `Aerial photo of Engine 150: ${s.sub}`);
+    let defs = `
+      <defs>
+        <linearGradient id="g-stream" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
+          <stop offset=".3" stop-color="#BFE4FA" stop-opacity=".85"/>
+          <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="g-mist">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".7"/><stop offset="1" stop-color="#BFE4FA" stop-opacity="0"/>
+        </radialGradient>`;
+    s.lines.forEach((l, i) => {
+      const polys = (l.masks || [l.mask]).map(m => `<polygon points="${m}" fill="#000"/>`).join('');
+      defs += `<mask id="m-leg-${i}"><rect width="${IMG_W}" height="${IMG_H}" fill="#fff"/>${polys}</mask>`;
+      if (l.arc) defs += `<linearGradient id="g-arc-${i}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${l.arc.end[0]}" y2="${l.arc.end[1]}">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
+          <stop offset=".45" stop-color="#CFEAFB" stop-opacity=".75"/>
+          <stop offset="1" stop-color="#5DB7F0" stop-opacity="0"/>
+        </linearGradient>`;
+    });
+    defs += '</defs>';
+    let body = `<image href="${s.image}" width="${IMG_W}" height="${IMG_H}"/>`;
+    s.lines.forEach((l, i) => {
+      body += `
+      <g class="line" id="line-${i}">
+        <g mask="url(#m-leg-${i})">
+          <path class="water core" d="${l.path}" fill="none" stroke="#2C8FD6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+          <path class="water hi" d="${l.path}" fill="none" stroke="#9FDBFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        ${(l.tips || [l.tip]).map(tip => l.stream === 'arc' ? (() => {
+        const [cx, cy] = l.arc.c, [ex, ey] = l.arc.end;
+        const q = (dx, dy) => `M 0 ${dy} Q ${cx} ${cy + dy} ${ex + dx} ${ey + dy}`;
+        const at = t => [2 * (1 - t) * t * cx + t * t * ex, 2 * (1 - t) * t * cy + t * t * ey];
+        const L = Math.hypot(ex, ey), [m1x, m1y] = at(.8), [m2x, m2y] = at(.93), [m3x, m3y] = at(.66);
+        return `
+        <g class="stream" transform="translate(${tip[0]},${tip[1]})">
+          <path d="${q(0, 0)}" stroke="url(#g-arc-${i})" stroke-width="30" fill="none" stroke-linecap="round" opacity=".5"/>
+          <path d="${q(0, 0)}" stroke="url(#g-arc-${i})" stroke-width="12" fill="none" stroke-linecap="round" opacity=".9"/>
+          <path class="drop arc" d="${q(0, 0)}" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>
+          <path class="drop arc d2" d="${q(-8, -6)}" stroke="#DDF1FD" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+          <path class="drop arc d3" d="${q(8, 7)}" stroke="#BFE4FA" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+          <circle class="mist" cx="${m1x}" cy="${m1y}" r="${L * .08}" fill="url(#g-mist)"/>
+          <circle class="mist m2" cx="${m2x}" cy="${m2y}" r="${L * .095}" fill="url(#g-mist)"/>
+          <circle class="mist m3" cx="${m3x}" cy="${m3y}" r="${L * .06}" fill="url(#g-mist)"/>
+        </g>`; })() : `
+        <g class="stream" transform="translate(${tip[0]},${tip[1]}) scale(${l.streamScale || 1})">
+          <path d="M 0 -4 C 60 -22, 140 -48, 225 -70 L 225 42 C 140 22, 60 8, 0 6 Z" fill="url(#g-stream)"/>
+          <path class="drop" d="M 4 -1 C 70 -18, 150 -44, 225 -62" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round" opacity=".95"/>
+          <path class="drop d2" d="M 4 3 C 70 -6, 150 -22, 225 -30" stroke="#DDF1FD" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>
+          <path class="drop d3" d="M 4 -4 C 70 -26, 150 -54, 225 -74" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round" opacity=".75"/>
+          <path class="drop d4" d="M 6 5 C 70 2, 150 -6, 225 4" stroke="#BFE4FA" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+          <circle class="mist" cx="190" cy="-42" r="46" fill="url(#g-mist)"/>
+          <circle class="mist m2" cx="215" cy="-14" r="40" fill="url(#g-mist)"/>
+          <circle class="mist m3" cx="150" cy="-38" r="30" fill="url(#g-mist)"/>
+        </g>`).join('')}
+      </g>`;
+    });
+    svg.innerHTML = defs + body;
+    scene.querySelector('svg')?.remove();
+    scene.insertBefore(svg, verdict);
+    lineGroups = s.lines.map((_, i) => svg.querySelector('#line-' + i));
+    // prime the water so it fills along the hose; fill time scales with hose length
+    lineGroups.forEach(g => {
+      let len = 0;
+      g.querySelectorAll('.water').forEach(p => {
+        len = p.getTotalLength();
+        p.style.strokeDasharray = len;
+        p.style.strokeDashoffset = len;
+      });
+      g.style.setProperty('--dur', (len / 620).toFixed(2) + 's');
+    });
+  }
+
+  // ---------- worksheet ----------
+  const hoseLabel = l => l.noHose ? REF.nozzles[l.nozzle].short : (l.hose || [{ length: l.length, size: l.size }]).map(h => `${h.length}′ ${REF.hs[h.size].label}`).join(' → ');
+  function buildPanel(s) {
+    calc.innerHTML = '';
+    lineEls = s.lines.map((l, i) => {
+      const stack = document.createElement('div');
+      stack.className = 'stack';
+      const sol = solved[i];
+      let html = `<div class="stack-head"><span>${esc(l.name)} <small>${esc(l.desc || `${hoseLabel(l)} · ${REF.nozzles[l.nozzle].short || REF.nozzles[l.nozzle].label}`)}</small></span><span class="state" id="state-${i}" hidden></span></div>`;
+      TERMS.forEach(t => {
+        const id = `${t.key}-${i}`;
+        html += `<div class="term">
+          <span class="op" aria-hidden="true">${t.op}</span>
+          <label for="${id}"><b>${t.label}</b><small>${t.key === 'el' && l.floor ? 'Elevation, 5 psi per floor' : t.desc}</small></label>
+          <input id="${id}" data-line="${i}" data-key="${t.key}" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
+        </div>`;
+      });
+      html += `<hr class="rule">
+        <div class="term total">
+          <span class="op" aria-hidden="true">=</span>
+          <label><b>PDP</b><small>Pump discharge</small></label>
+          <div class="val"><span id="total-${i}">—</span><small>psi</small></div>
+        </div>`;
+      stack.innerHTML = html;
+      calc.append(stack);
+      return {
+        inputs: Object.fromEntries(TERMS.map(t => [t.key, stack.querySelector('#' + t.key + '-' + i)])),
+        total: stack.querySelector('#total-' + i),
+        state: stack.querySelector('#state-' + i),
+      };
+    });
+    engineEl = null;
+    if (s.lines.length > 1) {
+      const eng = document.createElement('div');
+      eng.className = 'engine';
+      eng.innerHTML = `<div class="term total">
+          <span class="op" aria-hidden="true">→</span>
+          <label for="pdp-engine"><b>Engine PDP</b><small>Pump to the highest line; gate the rest down</small></label>
+          <input id="pdp-engine" data-line="engine" type="number" inputmode="decimal" step="any" placeholder="psi" autocomplete="off">
+        </div>`;
+      calc.append(eng);
+      engineEl = eng.querySelector('#pdp-engine');
+    }
+    calc.querySelectorAll('input').forEach(inp => inp.addEventListener('input', onInput));
+    const single = s.lines.length === 1;
+    $('charge').innerHTML = (single ? 'Charge the line' : 'Charge the lines') + ' <kbd>Enter</kbd>';
+    panelSub.textContent = s.lines.map(l => `${l.name}: ${hoseLabel(l)}`).join(' · ');
+  }
+
+  function read(i, k) { const v = lineEls[i].inputs[k].value.trim(); return v === '' ? null : Number(v); }
+  function total(i) {
+    const vals = TERMS.map(t => read(i, t.key));
+    if (vals.some(v => v === null || Number.isNaN(v))) return null;
+    return vals.reduce((a, b) => a + b, 0);
+  }
+  function refresh() {
+    lineEls.forEach((le, i) => { const t = total(i); le.total.textContent = t === null ? '—' : fmt(t); });
+  }
+  function onInput(e) {
+    e.target.classList.remove('wrong');
+    if (e.target.dataset.line === 'engine') { hideVerdict(); work.classList.remove('show'); return; }
+    const i = Number(e.target.dataset.line);
+    if (lineGroups[i].classList.contains('charged')) { lineGroups[i].classList.remove('charged'); setState(i, null); hideVerdict(); work.classList.remove('show'); }
+    refresh();
+  }
+  function setState(i, kind) {
+    const el = lineEls[i].state;
+    if (!kind) { el.hidden = true; el.className = 'state'; return; }
+    el.hidden = false; el.className = 'state ' + kind; el.textContent = kind === 'good' ? 'Charged' : 'Incorrect';
+  }
+
+  function showVerdict(kind, title, detail) {
+    verdict.className = 'verdict ' + kind;
+    verdict.innerHTML = '';
+    verdict.append(title);
+    if (detail) { const s = document.createElement('small'); s.textContent = detail; verdict.append(s); }
+    requestAnimationFrame(() => { verdict.classList.add('show'); if (kind === 'bad') verdict.classList.add('shake'); });
+  }
+  function hideVerdict() { verdict.classList.remove('show', 'shake'); }
+
+  function check() {
+    calc.querySelectorAll('input').forEach(inp => inp.classList.remove('wrong'));
+    const missing = [];
+    lineEls.forEach((le, i) => TERMS.forEach(t => { if (read(i, t.key) === null) { missing.push(le.inputs[t.key]); } }));
+    if (engineEl && engineEl.value.trim() === '') missing.push(engineEl);
+    if (missing.length) {
+      missing.forEach(inp => inp.classList.add('wrong'));
+      hint.textContent = 'Every value is needed. Enter 0 where there is none.';
+      return;
+    }
+    const results = current.lines.map((l, i) => {
+      const sol = solved[i];
+      const ok = TERMS.every(t => near(read(i, t.key), sol[t.key])) && near(total(i), sol.pdp);
+      lineGroups[i].classList.toggle('charged', ok);
+      setState(i, ok ? 'good' : 'bad');
+      return ok;
+    });
+    const single = current.lines.length === 1;
+    const engineOk = !engineEl || near(Number(engineEl.value), enginePDP());
+    if (engineEl && !engineOk) engineEl.classList.add('wrong');
+    if (results.every(Boolean) && engineOk) {
+      const totals = single
+        ? `PDP ${fmt(solved[0].pdp)} psi`
+        : `Engine PDP ${fmt(enginePDP())} psi`;
+      const detail = single
+        ? 'Line charged. Water is flowing.'
+        : current.lines.map((l, i) => `${l.name} ${fmt(solved[i].pdp)}`).join(' · ') + '. All lines charged; the lower ones gate down.';
+      showVerdict('good', 'Correct — ' + totals, detail);
+      hint.textContent = 'Nice work. The math is shown below.';
+      showWork();
+      playWater();
+    } else {
+      const bad = current.lines.filter((l, i) => !results[i]).map(l => l.name);
+      playAlarm();
+      showAlert();
+      if (!engineOk && bad.length === 0) {
+        showVerdict('bad', 'Incorrect', 'The lines are right, but the engine PDP is not.');
+        hint.textContent = 'The engine pumps to the highest line. The others are gated down.';
+      } else {
+        showVerdict('bad', 'Incorrect', single ? 'Rework your values and try again.' : `${bad.join(' and ')} ${bad.length > 1 ? 'are' : 'is'} wrong. Rework and charge again.`);
+        hint.textContent = single ? 'That is not the pump discharge pressure for this line.' : 'Correct lines stay charged. Fix the rest and press Enter.';
+      }
+      work.classList.remove('show');
+    }
+  }
+  function showWork(teaching) {
+    const tag = teaching ? '<span class="tag">Teach me</span>' : '';
+    let html = current.lines.map((l, i) => `<div><h3>${esc(l.name)} · worked${tag}</h3><ol>${solved[i].steps.map(s => '<li>' + esc(s).replace(/^(\w+)/, '<b>$1</b>') + '</li>').join('')}</ol></div>`).join('');
+    if (current.lines.length > 1) {
+      const top = enginePDP();
+      const gated = current.lines.filter((l, i) => solved[i].pdp < top).map((l) => l.name);
+      html += `<div><h3>Engine · worked</h3><ol>
+        <li><b>PDP</b> = highest line = ${fmt(top)} psi</li>
+        ${gated.length ? `<li>${esc(gated.join(' and '))} gated down at the discharge</li>` : ''}
+      </ol></div>`;
+    }
+    work.innerHTML = html;
+    work.classList.add('show');
+  }
+
+  function reset() {
+    stopWater(); hideAlert();
+    calc.querySelectorAll('input').forEach(inp => { inp.value = ''; inp.classList.remove('wrong'); });
+    lineGroups.forEach((g, i) => { g.classList.remove('charged'); setState(i, null); });
+    hideVerdict(); work.classList.remove('show');
+    hint.textContent = 'Enter all values, then press Enter.';
+    refresh();
+    lineEls[0]?.inputs.np.focus();
+  }
+
+  function load(i) {
+    current = SCENARIOS[i];
+    solved = current.lines.map(solve);
+    tabsEl.querySelectorAll('.tab').forEach((t, j) => t.setAttribute('aria-selected', String(j === i)));
+    $('progress').innerHTML = `<span>${esc(current.title)} of ${SCENARIOS.length}</span><small>${esc(current.sub)}</small>` +
+      `<span class="dots" aria-hidden="true">${SCENARIOS.map((_, j) => `<i class="${j < i ? 'done' : j === i ? 'now' : ''}"></i>`).join('')}</span>`;
+    layout.classList.toggle('multi', current.lines.length > 1);
+    buildScene(current);
+    buildPanel(current);
+    const nextIdx = (i + 1) % SCENARIOS.length, prevIdx = (i - 1 + SCENARIOS.length) % SCENARIOS.length;
+    const nxt = SCENARIOS[nextIdx], prv = SCENARIOS[prevIdx];
+    $('next').innerHTML = `<span>Next evolution<br><small>${esc(nxt.title)} · ${esc(nxt.sub)}</small></span><span class="arrow">→</span>`;
+    $('next').onclick = () => { load(nextIdx); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    $('prev').innerHTML = `<span>Previous evolution<br><small>${esc(prv.title)} · ${esc(prv.sub)}</small></span><span class="arrow">←</span>`;
+    $('prev').onclick = () => { load(prevIdx); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    reset();
+  }
+
+  // ---------- reference drawer ----------
+  function buildRef() {
+    const noz = Object.values(REF.nozzles).filter(n => n.group !== 'tips').map(n => `<tr><td>${esc(n.label)}</td><td>${n.np} psi · ${n.gpm}${n.gpmMax ? '–' + n.gpmMax : ''} gpm</td></tr>`).join('');
+    const tips = Object.values(REF.nozzles).filter(n => n.group === 'tips').map(n => `<tr><td>${esc(n.short)}</td><td>${n.np} psi · ${n.gpm} gpm</td></tr>`).join('');
+    const hs = Object.values(REF.hs).map(h => `<tr><td>${h.label} handline</td><td>HS = ${h.hs}</td></tr>`).join('');
+    const ap = Object.values(REF.appliances).filter(a => a.label !== 'None').map(a => `<tr><td>${esc(a.label)}${a.note ? `<br><span style="color:var(--ink-soft);font-size:12.5px">${esc(a.note)}</span>` : ''}</td><td>${a.over ? `${a.psi} psi · ${a.over.psi} psi over ${a.over.gpm} gpm` : a.psi ? a.psi + ' psi' : '—'}</td></tr>`).join('');
+    $('ref').innerHTML = `
+      <div><h3>Pump discharge pressure</h3><p class="eq">PDP = NP + FL + AP ± EL</p>
+        <h3 style="margin-top:14px">Nozzle pressure</h3><table>${noz}</table>
+        <h3 style="margin-top:14px">Rule of Eights, stack tips</h3><table>${tips}</table><p>Tip size in eighths, plus 2 on the top number, gives the hundreds of gpm.</p></div>
+      <div><h3>Friction loss, handline</h3><p class="eq">FL/100′ = (GPM × HS) ÷ 10 − 10</p><table>${hs}</table>
+        <h3 style="margin-top:14px">Friction loss, master stream / supply</h3><p class="eq">FL/100′ = Q × (Q − 1) ÷ HS</p><p>Q = gpm ÷ 100. HS = 4 for 4″ supply line.</p></div>
+      <div><h3>Relay pumping</h3><p>When the next engine is in service, pump only to its intake: FL on the line between the engines at the flow the ladder or nozzle is using, plus 20 psi pump to pump. No nozzle pressure, no elevation, and nothing past that engine.</p>
+        <h3 style="margin-top:14px">Two supply lines</h3><p>Two lines from the engine to the same appliance split the flow. Figure FL for one line at half the gpm, and add it once.</p>
+        <h3 style="margin-top:14px">More than one line flowing</h3><p>The engine's PDP is the highest line's pressure. Every lower line is gated down at its discharge.</p>
+        <h3 style="margin-top:14px">Elevation</h3><p class="eq">EL = height (ft) × 0.5 psi</p><p>Half the elevation in feet. Add it for a nozzle above the pump, subtract it below.</p>
+        <p class="eq" style="margin-top:8px">EL = floors above ground × 5 psi</p><p>In a building, count floors above the ground floor: the 3rd floor is 2 up, 10 psi.</p>
+        <h3 style="margin-top:14px">Appliance loss</h3><table>${ap}</table></div>`;
+  }
+
+  // ---------- sound: clips synthesized once into WAV and played through <audio> ----------
+  let soundOn = true;
+  try { soundOn = localStorage.getItem('pump-sound') !== 'off'; } catch (e) {}
+  function wav(samples, rate) {
+    const n = samples.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) { const x = Math.max(-1, Math.min(1, samples[i])); v.setInt16(44 + i * 2, x < 0 ? x * 32768 : x * 32767, true); }
+    const a = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })));
+    a.preload = 'auto';
+    return a;
+  }
+  const RATE = 22050;
+  // Alarm: a two-tone klaxon, six half-second notes
+  const alarmClip = (() => {
+    const n = RATE * 3, out = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / RATE, note = Math.floor(t / 0.5), tt = t - note * 0.5;
+      const f = note % 2 ? 620 : 880;
+      const env = tt < 0.03 ? tt / 0.03 : tt > 0.42 ? Math.max(0, (0.48 - tt) / 0.06) : 1;
+      out[i] = (Math.sin(2 * Math.PI * f * t) > 0 ? 1 : -1) * 0.22 * env;
+    }
+    return wav(out, RATE);
+  })();
+  // Water: filtered noise that swells over a second and a half, holds, then fades over the last three seconds
+  const waterClip = (() => {
+    const secs = 9, n = RATE * secs, out = new Float32Array(n);
+    let lp = 0, lp2 = 0, brown = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / RATE, w = Math.random() * 2 - 1;
+      brown = (brown + 0.02 * w) / 1.02;
+      lp += 0.18 * (w - lp); lp2 += 0.05 * (lp - lp2);
+      const wobble = 0.85 + 0.15 * Math.sin(2 * Math.PI * 0.7 * t);
+      const env = t < 1.5 ? t / 1.5 : t > secs - 3 ? (secs - t) / 3 : 1;
+      out[i] = (lp * 0.5 + lp2 * 0.6 + brown * 2.5) * 0.45 * wobble * env;
+    }
+    return wav(out, RATE);
+  })();
+  function play(clip) {
+    if (!soundOn) return;
+    try { clip.currentTime = 0; const p = clip.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+  function stopWater() { try { waterClip.pause(); waterClip.currentTime = 0; } catch (e) {} }
+  function playWater() { stopWater(); play(waterClip); }
+  function playAlarm() { stopWater(); play(alarmClip); }
+  $('sound').addEventListener('click', () => {
+    soundOn = !soundOn;
+    $('sound').setAttribute('aria-pressed', String(soundOn));
+    $('sound').textContent = soundOn ? '🔊 Sound' : '🔇 Sound';
+    if (!soundOn) stopWater();
+    try { localStorage.setItem('pump-sound', soundOn ? 'on' : 'off'); } catch (e) {}
+  });
+  $('sound').setAttribute('aria-pressed', String(soundOn));
+  $('sound').textContent = soundOn ? '🔊 Sound' : '🔇 Sound';
+
+  // ---------- wrong-answer alert ----------
+  let alertTimer = null;
+  function showAlert() {
+    const a = $('alert');
+    a.classList.add('show');
+    clearTimeout(alertTimer);
+    alertTimer = setTimeout(hideAlert, 4000);
+    $('alert-close').focus();
+  }
+  function hideAlert() {
+    $('alert').classList.remove('show');
+    clearTimeout(alertTimer);
+  }
+  $('alert-close').addEventListener('click', hideAlert);
+  $('alert').addEventListener('click', e => { if (e.target === $('alert')) hideAlert(); });
+
+  // ---------- wiring ----------
+  calc.addEventListener('submit', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && $('alert').classList.contains('show')) { e.preventDefault(); hideAlert(); return; }
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SUMMARY') { e.preventDefault(); check(); }
+    if (e.key === 'Escape') { if ($('alert').classList.contains('show')) hideAlert(); else reset(); }
+  });
+  $('charge').addEventListener('click', check);
+  $('reset').addEventListener('click', reset);
+  $('teach').addEventListener('click', () => {
+    showWork(true);
+    hint.textContent = 'Worked answer shown below. Follow it, then enter the values and charge the line.';
+    work.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  buildRef();
+  load(0);
+</script>

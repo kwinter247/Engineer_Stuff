@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ops Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --ground: #EEF0F3;
+    --surface: #FFFFFF;
+    --ink: #1B2230;
+    --ink-soft: #5A6474;
+    --line: #D3D8E0;
+    --yellow: #F5C12E;
+    --yellow-deep: #D9A417;
+    --navy: #1E3556;
+    --water: #5DB7F0;
+    --panel: #1C2027;
+    --panel-edge: #2C323C;
+    --panel-text: #E9ECF1;
+    --panel-muted: #8E97A6;
+    --good: #2F9E5B;
+    --bad: #C8392B;
+    --live: #E5484D;
+    --shadow: rgba(20, 24, 32, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #14181F;
+      --surface: #1C2129;
+      --ink: #E6E9EE;
+      --ink-soft: #9AA3B2;
+      --line: #2E3541;
+      --shadow: rgba(0, 0, 0, .45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #14181F;
+    --surface: #1C2129;
+    --ink: #E6E9EE;
+    --ink-soft: #9AA3B2;
+    --line: #2E3541;
+    --shadow: rgba(0, 0, 0, .45);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Barlow", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    padding-inline: 16px;
+    padding-block: 20px 48px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+  h1 {
+    margin: 0;
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800;
+    font-size: clamp(30px, 4.5vw, 42px);
+    letter-spacing: .01em;
+    text-transform: uppercase;
+    line-height: 1;
+    text-wrap: balance;
+  }
+  h1 em { font-style: normal; color: var(--navy); }
+  :root[data-theme="dark"] h1 em { color: var(--yellow); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) h1 em { color: var(--yellow); } }
+  .sub { color: var(--ink-soft); margin: 0; font-size: 15px; }
+  .menu {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink-soft); text-decoration: none; border: 1px solid var(--line); border-radius: 4px; padding: 5px 12px; margin-left: auto;
+  }
+  .menu:hover { color: var(--ink); border-color: var(--ink-soft); }
+
+  .progress {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--navy);
+  }
+  :root[data-theme="dark"] .progress { color: var(--yellow); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .progress { color: var(--yellow); } }
+  .progress small { font-family: "Barlow", sans-serif; font-weight: 500; font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
+  .progress .dots { display: flex; gap: 5px; margin-left: auto; }
+  .progress .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: block; }
+  .progress .dots i.done { background: var(--ink-soft); }
+  .progress .dots i.now { background: var(--yellow); box-shadow: 0 0 0 2px var(--navy); }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  /* ---------- gate: microphone permission ---------- */
+  .gate {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 28px 24px 26px; max-width: 560px; display: grid; gap: 14px; justify-items: start;
+    box-shadow: 0 10px 30px var(--shadow);
+  }
+  .gate h2 { margin: 0; font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 28px; letter-spacing: .03em; text-transform: uppercase; line-height: 1.05; }
+  .gate p { margin: 0; color: var(--ink-soft); }
+  .gate ol { margin: 0; padding-left: 20px; color: var(--ink-soft); display: grid; gap: 4px; }
+  .gate ol b { color: var(--ink); font-weight: 600; }
+  .gate .err { color: var(--bad); font-weight: 600; }
+
+  /* ---------- scene ---------- */
+  .scene { background: #8f8b84; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 0 var(--line); }
+  .scene .photo { position: relative; }
+  .scene img { display: block; width: 100%; height: auto; }
+  .scene .cap {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 10px 14px 9px; background: linear-gradient(transparent, rgba(0,0,0,.65));
+    color: #fff; font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 18px; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .scene .cap small { display: block; font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; text-transform: none; letter-spacing: 0; opacity: .9; }
+
+  .verdict {
+    display: none; padding: 10px 18px 11px; color: #fff;
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 800; font-size: 24px; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .verdict small { display: block; font-family: "Barlow", sans-serif; font-weight: 500; font-size: 14px; letter-spacing: 0; text-transform: none; opacity: .92; }
+  .verdict.show { display: block; animation: rise .25s ease; }
+  .verdict.bad { background: var(--bad); }
+  .verdict.good { background: var(--good); }
+  .verdict.mid { background: var(--yellow-deep); color: #1B1600; }
+  @keyframes rise { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- panel ---------- */
+  .panel {
+    background: var(--panel); color: var(--panel-text);
+    border: 1px solid var(--panel-edge); border-radius: 6px;
+    padding: 16px 18px 18px; display: grid; gap: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 10px 30px var(--shadow);
+  }
+  .panel-head { border-bottom: 1px solid var(--panel-edge); padding-bottom: 12px; display: grid; gap: 6px; }
+  .panel-title {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 800; font-size: 22px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--yellow); line-height: 1.1;
+  }
+  .panel-sub { color: var(--panel-muted); font-size: 13px; }
+
+  /* mic status */
+  .mic {
+    display: flex; align-items: center; gap: 10px;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 17px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--panel-muted);
+  }
+  .mic i { width: 12px; height: 12px; border-radius: 50%; background: #4B5361; display: block; flex: none; }
+  .mic.live { color: var(--panel-text); }
+  .mic.live i { background: var(--live); box-shadow: 0 0 0 0 rgba(229,72,77,.6); animation: pulse 1.3s ease-out infinite; }
+  .mic.blocked { color: #F08A83; }
+  .mic.blocked i { background: var(--bad); }
+  .mic .txt { min-width: 0; }
+  .mic button { margin-left: auto; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(229,72,77,.6); } 100% { box-shadow: 0 0 0 10px rgba(229,72,77,0); } }
+  @media (prefers-reduced-motion: reduce) { .mic.live i { animation: none; } }
+
+  .count {
+    display: flex; align-items: baseline; gap: 10px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 30px; font-weight: 600; line-height: 1;
+    font-variant-numeric: tabular-nums; color: var(--yellow);
+    background: #0F1217; border: 1px solid #3A414D; border-radius: 4px; padding: 10px 12px;
+  }
+  .count small { font-family: "Barlow", sans-serif; font-size: 13px; color: var(--panel-muted); font-weight: 500; }
+  .count .last { margin-left: auto; font-family: "Barlow", sans-serif; font-size: 14px; font-weight: 500; color: var(--panel-text); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .count .last b { color: #6FD39A; font-weight: 600; }
+
+  .items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .items li {
+    display: grid; grid-template-columns: 26px 1fr; align-items: center; gap: 10px;
+    padding: 7px 10px; border-radius: 4px; border: 1px solid #3A414D; background: #0F1217;
+    font-weight: 500; font-size: 15.5px;
+  }
+  .items li i {
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid #4B5361; display: grid; place-items: center;
+    font-size: 13px; font-weight: 700; line-height: 1;
+  }
+  .items li.hit { border-color: rgba(47,158,91,.6); }
+  .items li.hit i { background: var(--good); border-color: var(--good); color: #fff; }
+  .items li.miss { border-color: rgba(200,57,43,.7); color: #F8B4AD; }
+  .items li.miss i { border-color: var(--bad); color: var(--bad); }
+  .items li small { display: block; color: var(--panel-muted); font-size: 12.5px; font-weight: 400; }
+  .items li .num { color: var(--panel-muted); font-family: "IBM Plex Mono", monospace; font-size: 12px; margin-right: 6px; }
+
+  .hidden-note { color: var(--panel-muted); font-size: 13.5px; margin: 0; }
+
+  details { border-top: 1px solid var(--panel-edge); padding-top: 10px; }
+  summary {
+    cursor: pointer; color: var(--panel-muted);
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .heard {
+    margin: 8px 0 0; padding: 8px 10px; background: #0F1217; border: 1px solid #3A414D; border-radius: 4px;
+    font-size: 14px; color: var(--panel-text); min-height: 44px; max-height: 160px; overflow: auto; overflow-wrap: anywhere;
+  }
+  .heard .interim { color: var(--panel-muted); font-style: italic; }
+  .heard:empty::before { content: "Nothing yet."; color: #4B5361; }
+
+  .actions { display: grid; gap: 10px; }
+  button {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
+    border-radius: 4px; padding: 10px 20px; cursor: pointer; border: 1px solid transparent;
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+  }
+  button:focus-visible { outline: 3px solid var(--water); outline-offset: 2px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .charge { background: var(--yellow); color: #1B1600; border-color: var(--yellow-deep); }
+  .charge:hover { background: #FFCD3F; }
+  .charge:active { transform: translateY(1px); }
+  .ghost { background: transparent; color: var(--panel-muted); border-color: #3A414D; font-size: 17px; padding: 8px 16px; }
+  .ghost:hover { color: var(--panel-text); border-color: var(--panel-muted); }
+  .mini { font-size: 14px; padding: 4px 10px; letter-spacing: .06em; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .nav { display: grid; gap: 8px; border-top: 1px solid var(--panel-edge); padding-top: 10px; margin-top: 2px; }
+  .next {
+    background: var(--navy); color: #fff; border-color: #2B4A78; width: 100%; min-width: 0; overflow: hidden;
+    justify-content: space-between; text-align: left; padding: 11px 16px;
+  }
+  .next > span:first-child { min-width: 0; }
+  .next.prev { background: transparent; color: var(--panel-text); border-color: #3A414D; flex-direction: row-reverse; text-align: right; }
+  .next.prev:hover { border-color: var(--panel-muted); background: rgba(255,255,255,.04); }
+  .next:hover { background: #274571; }
+  .next small { display: block; font-family: "Barlow", sans-serif; font-weight: 500; font-size: 13px; letter-spacing: 0; text-transform: none; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .next .arrow { font-family: "Barlow", sans-serif; font-size: 22px; line-height: 1; }
+  .hint { color: var(--panel-muted); font-size: 13.5px; text-align: center; margin: 0; }
+
+  /* ---------- summary ---------- */
+  .summary { display: grid; gap: 10px; }
+  .summary .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px;
+    display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; align-items: center;
+  }
+  .summary .card b { font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .04em; text-transform: uppercase; }
+  .summary .card small { color: var(--ink-soft); }
+  .summary .card .score { grid-row: 1 / span 2; font-family: "IBM Plex Mono", monospace; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .summary .card .score.good { color: var(--good); }
+  .summary .card .score.bad { color: var(--bad); }
+  .summary .missed { grid-column: 1 / -1; color: var(--bad); font-size: 14px; }
+  .notes { color: var(--ink-soft); font-size: 14px; max-width: 65ch; margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Engine 150 <em>Ops Check</em></h1>
+    <p class="sub">Look at the photo. Call out everything you would check.</p>
+    <a class="menu" href="index.html">‹ Menu</a>
+  </header>
+
+  <!-- microphone gate -->
+  <section class="gate" id="gate">
+    <h2>This drill listens</h2>
+    <p>Each photo has a checklist. Say the items out loud in any order. The page hears you, ticks them off, and shows what you missed.</p>
+    <ol>
+      <li>Tap <b>Enable microphone</b>.</li>
+      <li>When the phone asks, choose <b>Allow</b>.</li>
+      <li>Speak in short phrases. Tap <b>Done</b> when you have called out everything you see.</li>
+    </ol>
+    <button type="button" class="charge" id="enable">🎙 Enable microphone</button>
+    <p class="err" id="gate-err" hidden></p>
+  </section>
+
+  <!-- drill -->
+  <div id="drill" hidden>
+    <div class="progress" id="progress"></div>
+    <div class="layout" style="margin-top: 18px">
+      <section class="scene" id="scene">
+        <div class="photo">
+          <img id="photo" alt="">
+          <div class="cap" id="cap"></div>
+        </div>
+        <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="panel-title">
+        <div class="panel-head">
+          <div class="panel-title" id="panel-title">Checklist</div>
+          <div class="panel-sub" id="panel-sub"></div>
+        </div>
+
+        <div class="mic" id="mic">
+          <i></i><span class="txt" id="mic-txt">Starting…</span>
+          <button type="button" class="ghost mini" id="restart">Restart mic</button>
+        </div>
+
+        <div class="count" id="count"><span id="hits">0</span><small>of <span id="total">0</span> called out</small><span class="last" id="last"></span></div>
+
+        <p class="hidden-note" id="hidden-note">The list stays hidden until you tap Done, so this is a memory check.</p>
+        <ul class="items" id="items" hidden></ul>
+
+        <div class="actions">
+          <button type="button" class="charge" id="done">Done · show what I missed</button>
+          <button type="button" class="ghost" id="peek">Show the list</button>
+        </div>
+
+        <details>
+          <summary>What I heard</summary>
+          <div class="heard" id="heard"></div>
+        </details>
+
+        <div class="nav">
+          <div class="row">
+            <button type="button" class="next prev" id="prev"><span><span>Previous</span><small id="prev-sub"></small></span><span class="arrow">‹</span></button>
+            <button type="button" class="next" id="next"><span><span id="next-title">Next</span><small id="next-sub"></small></span><span class="arrow">›</span></button>
+          </div>
+          <p class="hint">Next and Previous clear the slide and restart the microphone.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- summary -->
+  <section id="finish" hidden>
+    <div class="progress"><span>Drill complete</span></div>
+    <div class="summary" id="summary" style="margin-top: 14px"></div>
+    <div class="actions" style="margin-top: 14px; max-width: 360px">
+      <button type="button" class="charge" id="again">Run it again</button>
+    </div>
+  </section>
+
+  <p class="notes" id="unsupported" hidden>This browser does not support speech recognition. Open the link in <b>Chrome</b> (Android) or <b>Safari</b> (iPhone).</p>
+</div>
+
+<script>
+  // ---------- checklists ----------
+  // One entry per photo. `items[].say` lists extra wording that counts as calling the item out;
+  // the label itself always counts. Matching ignores small words like "the" and word endings,
+  // so "chock the wheels", "wheels chocked" and "wheel chocks" all match "chock wheels".
+  const CHECKS = [
+    {
+      id: 'sample',
+      title: 'Sample slide',
+      sub: 'Placeholder until the real photos and lists arrive',
+      image: 'scene-150.jpg',
+      items: [
+        { label: 'Parking brake set', say: ['brake set', 'set the brake', 'parking brake'] },
+        { label: 'Wheels chocked', say: ['chock wheels', 'chocks in', 'chocks'] },
+        { label: 'Pump engaged', say: ['engage pump', 'pump in gear', 'pump light'] },
+        { label: 'Tank to pump open', say: ['tank to pump', 'open tank'] },
+        { label: 'Discharge open', say: ['open discharge', 'discharge gate', 'charge the line'] },
+        { label: 'Throttle to pressure', say: ['throttle up', 'bring up pressure', 'set the pressure', 'throttle'] },
+        { label: 'Relief valve set', say: ['relief valve', 'set the relief', 'governor set', 'governor'] },
+        { label: 'Intake pressure checked', say: ['intake pressure', 'check intake', 'residual pressure', 'residual'] },
+      ],
+    },
+  ];
+
+  // ---------- matching ----------
+  const NUMBERS = {
+    zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10',
+    eleven: '11', twelve: '12', thirteen: '13', fourteen: '14', fifteen: '15', sixteen: '16', seventeen: '17', eighteen: '18',
+    nineteen: '19', twenty: '20', thirty: '30', forty: '40', fifty: '50', hundred: '100',
+  };
+  const STOP = new Set(['the', 'a', 'an', 'is', 'are', 'and', 'to', 'of', 'my', 'our', 'its', 'it', 'on', 'in', 'at', 'with', 'for', 'that', 'this', 'i', 'im', 'ive', 'we', 'have', 'has', 'be', 'been', 'got', 'get', 'make', 'sure', 'check', 'checked', 'okay', 'ok', 'good']);
+  function stem(w) {
+    if (w.length <= 3) return w;
+    return w.replace(/ies$/, 'y').replace(/(ing|ed|es|s)$/, '');
+  }
+  function words(text) {
+    return text.toLowerCase()
+      .replace(/['’]/g, '')
+      .replace(/[^a-z0-9¾½¼⅜⅛ ]+/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(w => NUMBERS[w] || w)
+      .filter(w => !STOP.has(w))
+      .map(stem);
+  }
+  function same(a, b) {
+    if (a === b) return true;
+    if (a.length < 3 || b.length < 3) return false;
+    return a.startsWith(b) || b.startsWith(a);
+  }
+  // every phrase word appears inside a window of the transcript, in any order
+  function phraseIn(phrase, spoken) {
+    if (!phrase.length || spoken.length < phrase.length) return false;
+    const span = phrase.length + 2;
+    for (let i = 0; i + phrase.length <= spoken.length; i++) {
+      const win = spoken.slice(i, i + span);
+      if (phrase.every(p => win.some(s => same(p, s)))) return true;
+    }
+    return false;
+  }
+  function compile(item) {
+    return [item.label, ...(item.say || [])].map(words).filter(p => p.length);
+  }
+
+  // ---------- state ----------
+  const $ = id => document.getElementById(id);
+  const gate = $('gate'), drill = $('drill'), finish = $('finish');
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null;
+  let wantListening = false;   // the drill wants the mic on
+  let restartTimer = null;
+  let idx = 0;
+  let finalText = '';          // committed transcript for this slide
+  let interimText = '';
+  let hits = [];               // per item: true once heard
+  let graded = false;
+  let listShown = false;
+  const results = [];          // per slide: { hits, total, missed: [] }
+  let compiled = [];
+
+  // ---------- microphone ----------
+  function setMic(state, text) {
+    const m = $('mic');
+    m.className = 'mic ' + state;
+    $('mic-txt').textContent = text;
+  }
+  function buildRecognizer() {
+    const r = new SR();
+    r.lang = 'en-US';
+    r.continuous = true;
+    r.interimResults = true;
+    r.maxAlternatives = 3;
+    r.onstart = () => setMic('live', 'Listening');
+    r.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        if (res.isFinal) {
+          // keep every alternative for matching; show the best one
+          finalText += ' ' + res[0].transcript;
+          for (let k = 0; k < res.length; k++) score(res[k].transcript);
+        } else {
+          interim += ' ' + res[0].transcript;
+        }
+      }
+      interimText = interim;
+      if (interim.trim()) score(interim);
+      renderHeard();
+    };
+    r.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        wantListening = false;
+        setMic('blocked', 'Microphone blocked. Allow it in the browser settings, then tap Restart mic.');
+      } else if (e.error === 'network') {
+        setMic('blocked', 'No network for speech. Tap Restart mic.');
+      }
+      // 'no-speech' and 'aborted' fall through to onend, which restarts
+    };
+    r.onend = () => {
+      if (!wantListening) { setMic('', graded ? 'Microphone paused. Next restarts it.' : 'Microphone off'); return; }
+      // phones stop after a pause; bring it straight back
+      setMic('', 'Reconnecting…');
+      clearTimeout(restartTimer);
+      restartTimer = setTimeout(startRec, 250);
+    };
+    return r;
+  }
+  function startRec() {
+    if (!SR) return;
+    if (!rec) rec = buildRecognizer();
+    try { rec.start(); } catch (e) { /* already started */ }
+  }
+  function stopRec() {
+    wantListening = false;
+    clearTimeout(restartTimer);
+    if (rec) { try { rec.stop(); } catch (e) {} }
+  }
+  function listen() {
+    wantListening = true;
+    // a fresh recognizer each slide keeps the transcript clean
+    if (rec) { try { rec.abort(); } catch (e) {} rec = null; }
+    startRec();
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (rec) { try { rec.abort(); } catch (e) {} } }
+    else if (wantListening) startRec();
+  });
+
+  // ---------- scoring ----------
+  function score(text) {
+    if (graded) return;
+    const spoken = words(text);
+    const cur = CHECKS[idx];
+    cur.items.forEach((item, i) => {
+      if (hits[i]) return;
+      if (compiled[i].some(p => phraseIn(p, spoken))) {
+        hits[i] = true;
+        $('last').innerHTML = 'Heard <b>' + esc(item.label) + '</b>';
+        markItem(i);
+      }
+    });
+    $('hits').textContent = hits.filter(Boolean).length;
+  }
+  function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+  function renderHeard() {
+    $('heard').innerHTML = esc(finalText.trim()) + (interimText.trim() ? ' <span class="interim">' + esc(interimText.trim()) + '</span>' : '');
+    $('heard').scrollTop = $('heard').scrollHeight;
+  }
+  function markItem(i) {
+    const li = $('items').children[i];
+    if (!li) return;
+    li.classList.add('hit');
+    li.querySelector('i').textContent = '✓';
+  }
+
+  // ---------- slides ----------
+  function show(i) {
+    idx = i;
+    const cur = CHECKS[idx];
+    compiled = cur.items.map(compile);
+    hits = cur.items.map(() => false);
+    finalText = ''; interimText = ''; graded = false; listShown = false;
+
+    $('photo').src = cur.image;
+    $('photo').alt = cur.title;
+    $('cap').innerHTML = esc(cur.title) + (cur.sub ? '<small>' + esc(cur.sub) + '</small>' : '');
+    $('panel-sub').textContent = cur.items.length + ' items. Say them in any order.';
+    $('total').textContent = cur.items.length;
+    $('hits').textContent = '0';
+    $('last').textContent = '';
+    $('heard').textContent = '';
+    $('verdict').className = 'verdict';
+
+    const ul = $('items');
+    ul.innerHTML = cur.items.map((it, n) => '<li><i></i><span><span class="num">' + (n + 1) + '</span>' + esc(it.label) + '</span></li>').join('');
+    ul.hidden = true;
+    $('hidden-note').hidden = false;
+    $('peek').textContent = 'Show the list';
+    $('done').disabled = false;
+
+    // progress
+    $('progress').innerHTML = '<span>Check ' + (idx + 1) + ' of ' + CHECKS.length + '</span><small>' + esc(cur.title) + '</small>'
+      + '<span class="dots">' + CHECKS.map((_, n) => '<i class="' + (n < idx ? 'done' : n === idx ? 'now' : '') + '"></i>').join('') + '</span>';
+
+    // nav
+    const prev = CHECKS[idx - 1], next = CHECKS[idx + 1];
+    $('prev').disabled = !prev;
+    $('prev-sub').textContent = prev ? prev.title : 'First check';
+    $('next-title').textContent = next ? 'Next' : 'Finish';
+    $('next-sub').textContent = next ? next.title : 'See the summary';
+
+    listen();
+  }
+
+  function grade() {
+    if (graded) return;
+    graded = true;
+    const cur = CHECKS[idx];
+    const missed = cur.items.filter((_, i) => !hits[i]).map(it => it.label);
+    const got = hits.filter(Boolean).length;
+    results[idx] = { hits: got, total: cur.items.length, missed };
+
+    const ul = $('items');
+    ul.hidden = false; $('hidden-note').hidden = true; listShown = true;
+    $('peek').textContent = 'Hide the list';
+    cur.items.forEach((_, i) => {
+      const li = ul.children[i];
+      if (!hits[i]) { li.classList.add('miss'); li.querySelector('i').textContent = '✕'; }
+    });
+
+    const v = $('verdict');
+    if (!missed.length) {
+      v.className = 'verdict show good';
+      v.innerHTML = 'All ' + cur.items.length + ' called out<small>Nothing missed. Tap Next.</small>';
+    } else {
+      v.className = 'verdict show ' + (got >= cur.items.length * .7 ? 'mid' : 'bad');
+      v.innerHTML = 'Missed ' + missed.length + ' of ' + cur.items.length + '<small>' + esc(missed.join(' · ')) + '</small>';
+    }
+    $('done').disabled = true;
+    stopRec();
+  }
+
+  function showSummary() {
+    stopRec();
+    drill.hidden = true; finish.hidden = false;
+    $('summary').innerHTML = CHECKS.map((c, i) => {
+      const r = results[i];
+      if (!r) return '<div class="card"><b>' + esc(c.title) + '</b><small>Skipped</small><span class="score">–</span></div>';
+      const ok = r.missed.length === 0;
+      return '<div class="card"><b>' + esc(c.title) + '</b><small>' + (ok ? 'Nothing missed' : 'Missed ' + r.missed.length) + '</small>'
+        + '<span class="score ' + (ok ? 'good' : 'bad') + '">' + r.hits + '/' + r.total + '</span>'
+        + (ok ? '' : '<div class="missed">' + esc(r.missed.join(' · ')) + '</div>') + '</div>';
+    }).join('');
+    window.scrollTo({ top: 0 });
+  }
+
+  // ---------- wiring ----------
+  $('enable').addEventListener('click', () => {
+    if (!SR) { $('gate-err').hidden = false; $('gate-err').textContent = 'This browser cannot do speech recognition. Use Chrome on Android or Safari on iPhone.'; return; }
+    gate.hidden = true; drill.hidden = false;
+    results.length = 0;
+    show(0);   // rec.start() from this tap is what makes the phone ask for the microphone
+  });
+  $('restart').addEventListener('click', () => { if (!graded) listen(); });
+  $('done').addEventListener('click', grade);
+  $('peek').addEventListener('click', () => {
+    listShown = !listShown;
+    $('items').hidden = !listShown;
+    $('hidden-note').hidden = listShown;
+    $('peek').textContent = listShown ? 'Hide the list' : 'Show the list';
+  });
+  $('next').addEventListener('click', () => {
+    if (!graded) grade();
+    if (idx + 1 < CHECKS.length) show(idx + 1); else showSummary();
+  });
+  $('prev').addEventListener('click', () => { if (idx > 0) show(idx - 1); });
+  $('again').addEventListener('click', () => { finish.hidden = true; drill.hidden = false; results.length = 0; show(0); });
+
+  if (!SR) { $('unsupported').hidden = false; $('enable').disabled = true; }
+</script>
+</body>
+</html>
