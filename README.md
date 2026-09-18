@@ -5,30 +5,23 @@ Two phone-friendly drills behind one link. `index.html` is the menu.
 | Page | Drill |
 | --- | --- |
 | `hydraulics.html` | Pump discharge pressure evolutions (below). |
-| `opscheck.html` | Ops Check: look at a photo, call out the checklist, the page listens and shows what was missed. |
+| `opscheck.html` | Ops Check: walk the truck photo by photo, call out the operational check, the page listens and grades the whole thing. |
 
 ## Ops Check
 
-Each slide is a photo with a checklist. Tapping **Enable microphone** starts the browser's speech recognition (the phone asks to allow the microphone once), and the page listens while the user talks. Items are ticked as they are heard; the list stays hidden until **Done** so it works as a memory check, and **Show the list** reveals it early. **Done** shows the missed items in red under the photo. **Next** and **Previous** clear the slide and restart the microphone; **Finish** shows a summary of every slide. **What I heard** shows the raw transcript, which is useful for tuning the accepted wording.
+Twenty photos of Engine 151 walk through the Glendale Fire Department Engineer Operational Check (Rev 10/2024). Tapping **Enable microphone** starts the browser's speech recognition (the phone asks to allow the microphone once) and it stays on for the whole run. One running checklist of every item on the check is scored the entire time: the user moves through the photos in any order with Next, Previous or the **Jump to** picker, calls out what they would check, and can go back to any photo to pick up something they missed. The panel shows how many items have been called out overall and for the sections the current photo covers, and names the last item heard. **Show the list** peeks at the current photo's sections with live ticks. **Complete** stops the microphone and shows the answer sheet: every section with its items in green (called out) or red (missed), a **Missed only** filter, **Back to the photos** to keep going, and **Start over**. **What I heard** shows the raw transcript, which is useful for tuning the accepted wording.
 
-Slides are the `CHECKS` array in `opscheck.html`:
+The checklist is the `SECTIONS` array in `opscheck.html`, one entry per section of the document, and the photos are the `SLIDES` array:
 
 ```js
-{
-  id: 'brake', title: 'Cab', sub: 'Before leaving the seat', image: 'ops-cab.jpg',
-  items: [
-    { label: 'Parking brake set', say: ['brake set', 'parking brake'] },
-  ],
-}
+{ image: 'ops-13.jpg', title: 'Tire and wheel', sub: 'Every tire', sections: ['tires'] }
 ```
 
-The label always counts; `say` lists extra wording that also counts. Matching drops filler words (the, my, is, check…) and word endings, and accepts the phrase's words in any order within a short window, so "chock the wheels", "wheels are chocked" and "wheel chocks" all match `chock wheels`. Number words become digits ("four inch" matches "4 inch").
+`sections` names the checklist sections a photo is about. While that photo is up, its sections get first claim on whatever is said, and if an utterance fits one of them it counts only there. Anything else on the checklist can still be called out from any photo. Where the document repeats a step (the service brake is pumped in both the low PSI test and the pop-out test), the first mention ticks the first occurrence and the next mention ticks the next.
 
-Speech recognition works in Chrome on Android and Safari on iPhone, and needs the page served over HTTPS (GitHub Pages is fine). Firefox does not support it.
+Each item's `say` lists extra wording that counts; the label itself always counts. Matching drops filler words (the, my, is, check…) and word endings, and accepts the phrase's words in any order within a short window, so "chock the wheels", "wheels are chocked" and "wheel chocks" all match `chock wheels`. Number words become digits ("four inch" matches "4 inch"). When an utterance fits more than one item, the longest matching phrase claims its words first, and a second item whose wording is fully covered by one just ticked is treated as the same thing said once.
 
-The slides follow the Glendale Fire Department Engineer Operational Check (Rev 10/2024): General Condition, the Cold Lap split into body and lights, front, rear, top, interior, tires, suspension, fluids, belts and electrical, the Hot Lap split into start up, gauges, lights and audible devices, the Pump Check, the Air System / Brake Test split into setup and low PSI recovery, pop-out test, air recovery and parking brake test, and the close-out. Slides without a photo yet show a placeholder; add `image: 'ops-xxx.jpg'` to the slide when the photo is in. A **Jump to** picker skips straight to any slide.
-
-When an utterance fits more than one item, the longest matching phrase claims its words first, so "stow the chocks" ticks the stow item and not a bare "chocks" item on the same slide.
+Speech recognition works in Chrome on Android and Safari on iPhone, and needs the page served over HTTPS (GitHub Pages is fine). Firefox does not support it. The `ops-*.jpg` photos are resized to 1600 px on the long side.
 
 # Hydraulics Trainer
 

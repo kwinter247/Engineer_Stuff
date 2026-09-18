@@ -257,24 +257,78 @@
   .summary .card .score.bad { color: var(--bad); }
   .summary .missed { grid-column: 1 / -1; color: var(--bad); font-size: 14px; }
   .notes { color: var(--ink-soft); font-size: 14px; max-width: 65ch; margin: 0; }
+
+  /* ---------- continuous run ---------- */
+  .scene img { max-height: 62vh; object-fit: contain; background: #111; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 13px; font-weight: 500; color: var(--panel-muted);
+    border: 1px solid #3A414D; border-radius: 3px; padding: 3px 8px; display: flex; gap: 6px; align-items: baseline;
+  }
+  .chip b { font-family: "IBM Plex Mono", monospace; font-weight: 600; color: var(--panel-text); font-size: 12.5px; }
+  .chip.full b { color: #6FD39A; }
+  .group { display: grid; gap: 6px; }
+  .group h4 {
+    margin: 8px 0 0; font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 16px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--yellow); display: flex; justify-content: space-between; gap: 10px;
+  }
+  .group h4 span { font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 600; color: var(--panel-muted); letter-spacing: 0; }
+  .complete { background: transparent; color: var(--water); border-color: rgba(93,183,240,.45); font-size: 17px; padding: 8px 16px; }
+  .complete:hover { background: rgba(93,183,240,.12); border-color: var(--water); }
+
+  /* ---------- answer sheet ---------- */
+  .score {
+    display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; align-items: center;
+    padding: 16px 20px; border-radius: 6px; color: #fff;
+  }
+  .score.good { background: var(--good); }
+  .score.mid { background: var(--yellow-deep); color: #1B1600; }
+  .score.bad { background: var(--bad); }
+  .score .big { grid-row: 1 / span 2; font-family: "IBM Plex Mono", monospace; font-size: 40px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .score b { font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 24px; letter-spacing: .04em; text-transform: uppercase; line-height: 1; }
+  .score small { opacity: .92; }
+  .sheet { display: grid; gap: 14px; }
+  .sheet .sec { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px 14px; display: grid; gap: 8px; }
+  .sheet .sec h3 {
+    margin: 0; display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    font-family: "Barlow Condensed", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .sheet .sec h3 span { font-family: "IBM Plex Mono", monospace; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .sheet .sec h3 span.good { color: var(--good); }
+  .sheet .sec h3 span.bad { color: var(--bad); }
+  .sheet ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+  .sheet li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; padding: 6px 9px; border-radius: 4px; font-size: 15px; line-height: 1.35; }
+  .sheet li i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; margin-top: 2px; }
+  .sheet li.hit { background: rgba(47,158,91,.12); }
+  .sheet li.hit i { background: var(--good); }
+  .sheet li.miss { background: rgba(200,57,43,.12); color: var(--bad); font-weight: 500; }
+  .sheet li.miss i { background: var(--bad); }
+  .sheet.missed-only li.hit { display: none; }
+  .sheet.missed-only .sec.clean { display: none; }
+  .toggle {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+    background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px;
+  }
+  .toggle[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .finish-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Engine 150 <em>Ops Check</em></h1>
-    <p class="sub">Look at the photo. Call out everything you would check.</p>
+    <p class="sub">Walk the truck. Call out everything you would check.</p>
     <a class="menu" href="index.html">‹ Menu</a>
   </header>
 
   <!-- microphone gate -->
   <section class="gate" id="gate">
     <h2>This drill listens</h2>
-    <p>Each photo has a checklist. Say the items out loud in any order. The page hears you, ticks them off, and shows what you missed.</p>
+    <p>One running checklist covers the whole operational check. The microphone stays on from the first photo to the last. Move through the photos in any order, call out what you would check, and go back to any photo if you missed something. Tap <b>Complete</b> at the end for the answer sheet.</p>
     <ol>
       <li>Tap <b>Enable microphone</b>.</li>
       <li>When the phone asks, choose <b>Allow</b>.</li>
-      <li>Speak in short phrases. Tap <b>Done</b> when you have called out everything you see.</li>
+      <li>Speak in short phrases. The counter ticks up as items are heard.</li>
     </ol>
     <button type="button" class="charge" id="enable">🎙 Enable microphone</button>
     <p class="err" id="gate-err" hidden></p>
@@ -283,21 +337,19 @@
   <!-- drill -->
   <div id="drill" hidden>
     <div class="progress" id="progress"></div>
-    <div class="progress" style="margin-top: 10px"><small>Jump to</small><select class="jump" id="jump" aria-label="Jump to a check"></select></div>
+    <div class="progress" style="margin-top: 10px"><small>Jump to</small><select class="jump" id="jump" aria-label="Jump to a photo"></select></div>
     <div class="layout" style="margin-top: 18px">
       <section class="scene" id="scene">
         <div class="photo">
-          <img id="photo" alt="" hidden>
-          <div class="nophoto" id="nophoto" hidden></div>
+          <img id="photo" alt="">
           <div class="cap" id="cap"></div>
         </div>
-        <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
       </section>
 
       <section class="panel" aria-labelledby="panel-title">
         <div class="panel-head">
-          <div class="panel-title" id="panel-title">Checklist</div>
-          <div class="panel-sub" id="panel-sub"></div>
+          <div class="panel-title" id="panel-title">Running checklist</div>
+          <div class="panel-sub">Whole operational check. Say items in any order, on any photo.</div>
         </div>
 
         <div class="mic" id="mic">
@@ -307,12 +359,14 @@
 
         <div class="count" id="count"><span id="hits">0</span><small>of <span id="total">0</span> called out</small><span class="last" id="last"></span></div>
 
-        <p class="hidden-note" id="hidden-note">The list stays hidden until you tap Done, so this is a memory check.</p>
-        <ul class="items" id="items" hidden></ul>
+        <div class="chips" id="chips"></div>
+
+        <p class="hidden-note" id="hidden-note">Items stay hidden so this is a memory check. Show the list peeks at the sections for this photo.</p>
+        <div class="group" id="items" hidden></div>
 
         <div class="actions">
-          <button type="button" class="charge" id="done">Done · show what I missed</button>
           <button type="button" class="ghost" id="peek">Show the list</button>
+          <button type="button" class="complete" id="complete">Complete · answer sheet</button>
         </div>
 
         <details>
@@ -325,31 +379,34 @@
             <button type="button" class="next prev" id="prev"><span><span>Previous</span><small id="prev-sub"></small></span><span class="arrow">‹</span></button>
             <button type="button" class="next" id="next"><span><span id="next-title">Next</span><small id="next-sub"></small></span><span class="arrow">›</span></button>
           </div>
-          <p class="hint">Next and Previous clear the slide and restart the microphone.</p>
+          <p class="hint">The microphone keeps listening as you move between photos.</p>
         </div>
       </section>
     </div>
   </div>
 
-  <!-- summary -->
+  <!-- answer sheet -->
   <section id="finish" hidden>
-    <div class="progress"><span>Drill complete</span></div>
-    <div class="summary" id="summary" style="margin-top: 14px"></div>
-    <div class="actions" style="margin-top: 14px; max-width: 360px">
-      <button type="button" class="charge" id="again">Run it again</button>
+    <div class="progress"><span>Answer sheet</span><small>Engineer Operational Check</small></div>
+    <div class="score" id="score" style="margin-top: 14px"></div>
+    <div class="finish-actions" style="margin-top: 14px">
+      <button type="button" class="toggle" id="missed-only" aria-pressed="false">Missed only</button>
+      <button type="button" class="toggle" id="back">‹ Back to the photos</button>
+      <button type="button" class="toggle" id="again">Start over</button>
     </div>
+    <div class="sheet" id="sheet" style="margin-top: 14px"></div>
   </section>
 
   <p class="notes" id="unsupported" hidden>This browser does not support speech recognition. Open the link in <b>Chrome</b> (Android) or <b>Safari</b> (iPhone).</p>
 </div>
 
 <script>
-  // ---------- checklists ----------
-  // One entry per slide. `items[].say` lists extra wording that counts as calling the item out;
-  // the label itself always counts. Matching ignores small words like "the" and word endings,
-  // so "chock the wheels", "wheels chocked" and "wheel chocks" all match "chock wheels".
-  // `image` is optional; a slide without one shows a placeholder until the photo is added.
-  const CHECKS = [
+  // ---------- checklist ----------
+  // One entry per section of the Engineer Operational Check. `items[].say` lists extra wording
+  // that counts as calling the item out; the label itself always counts. Matching ignores small
+  // words like "the" and word endings, so "chock the wheels", "wheels chocked" and "wheel chocks"
+  // all match "chock wheels".
+  const SECTIONS = [
     {
       id: 'walk', title: 'General Condition', sub: 'Initial walk around, first approach to the truck',
       items: [
@@ -591,6 +648,33 @@
     },
   ];
 
+  // ---------- photos ----------
+  // In order. `sections` names the checklist sections this photo is about: items in those
+  // sections get first claim on what is said while the photo is up, but anything on the whole
+  // checklist can be called out from any photo.
+  const SLIDES = [
+    { image: 'ops-01.jpg', title: 'Walk around', sub: 'First approach. Full view of the truck', sections: ['walk'] },
+    { image: 'ops-02.jpg', title: 'Front of truck', sub: 'Grille, bumper, lights, windshield', sections: ['cold-front', 'cold-body'] },
+    { image: 'ops-03.jpg', title: 'Cab door and front bumper', sub: 'Cold lap', sections: ['cold-body', 'cold-front'] },
+    { image: 'ops-04.jpg', title: 'Pump panel and crew door', sub: 'Cold lap', sections: ['cold-body'] },
+    { image: 'ops-05.jpg', title: 'Rear compartments', sub: 'Cold lap', sections: ['cold-body'] },
+    { image: 'ops-06.jpg', title: 'Rear corner', sub: 'Cold lap', sections: ['cold-body', 'cold-rear'] },
+    { image: 'ops-07.jpg', title: 'Rear of truck', sub: 'Tailboard, ladder, hose bed, supply line', sections: ['cold-rear'] },
+    { image: 'ops-08.jpg', title: 'Top of truck', sub: 'Hose beds, antennas, light bar', sections: ['cold-top'] },
+    { image: 'ops-09.jpg', title: 'Rear corner, far side', sub: 'Cold lap', sections: ['cold-body', 'cold-rear'] },
+    { image: 'ops-10.jpg', title: 'Compartments, far side', sub: 'Cold lap', sections: ['cold-body'] },
+    { image: 'ops-11.jpg', title: 'Crew door and pump panel, far side', sub: 'Cold lap', sections: ['cold-body'] },
+    { image: 'ops-12.jpg', title: 'Driver door and cab', sub: 'Cold lap, interior', sections: ['cold-body', 'cold-cab'] },
+    { image: 'ops-13.jpg', title: 'Tire and wheel', sub: 'Every tire', sections: ['tires'] },
+    { image: 'ops-14.jpg', title: 'Suspension', sub: 'Behind the wheel', sections: ['suspension'] },
+    { image: 'ops-15.jpg', title: 'Engine compartment', sub: 'Fluids, belts, wiring. Weekly with a cab tilt', sections: ['fluids', 'belts'] },
+    { image: 'ops-16.jpg', title: 'Gauge cluster', sub: 'Hot lap, normal operating levels', sections: ['hot-gauges'] },
+    { image: 'ops-17.jpg', title: 'System Info display', sub: 'Hot lap, start up', sections: ['hot-start'] },
+    { image: 'ops-18.jpg', title: 'Lights on', sub: 'Hot lap. Driving lights, Code 3, scene lights, audible devices', sections: ['hot-lights', 'hot-audible'] },
+    { image: 'ops-19.jpg', title: 'Pump panel', sub: 'Pump check', sections: ['pump'] },
+    { image: 'ops-20.jpg', title: 'Park brake', sub: 'Air system and brake test, then close it out', sections: ['air-setup', 'air-popout', 'air-recovery', 'brake-test', 'complete'] },
+  ];
+
   // ---------- matching ----------
   const NUMBERS = {
     zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10',
@@ -637,17 +721,24 @@
   }
   // tick the items an utterance calls out. Longer phrases claim their words first, so
   // "stow the chocks" ticks the stow item without also ticking a bare "chocks" item.
-  function match(items, compiled, spoken, already) {
+  // Items in `priority` (the current photo's sections) claim words before the rest of the checklist.
+  function match(items, compiled, spoken, already, priority) {
     const cands = [];
     items.forEach((_, i) => {
       if (already[i]) return;
-      compiled[i].forEach(p => { const pos = phraseIn(p, spoken); if (pos) cands.push({ i, len: p.length, pos }); });
+      const pri = priority.has(i) ? 1 : 0;
+      compiled[i].forEach(p => { const pos = phraseIn(p, spoken); if (pos) cands.push({ i, len: p.length, pos, pri }); });
     });
-    cands.sort((a, b) => b.len - a.len);
-    const used = new Set(), ticked = [];
-    for (const c of cands) {
+    cands.sort((a, b) => b.pri - a.pri || b.len - a.len || a.i - b.i);
+    // if the utterance fits this photo's sections, it is about this photo
+    const scoped = cands.some(c => c.pri) ? cands.filter(c => c.pri) : cands;
+    const used = new Set(), ticked = [], vocab = new Set();
+    for (const c of scoped) {
       if (ticked.includes(c.i) || c.pos.some(x => used.has(x))) continue;
+      // the same thing said once: skip an item whose wording is covered by one already ticked
+      if (ticked.length && c.pos.every(x => vocab.has(spoken[x]))) continue;
       c.pos.forEach(x => used.add(x));
+      compiled[c.i].forEach(p => p.forEach(w => vocab.add(w)));
       ticked.push(c.i);
     }
     return ticked;
@@ -656,26 +747,28 @@
     return [item.label, ...(item.say || [])].map(words).filter(p => p.length);
   }
 
+
   // ---------- state ----------
   const $ = id => document.getElementById(id);
   const gate = $('gate'), drill = $('drill'), finish = $('finish');
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const ITEMS = [];                       // every item on the check, flat, with its section index
+  SECTIONS.forEach((s, si) => s.items.forEach(it => ITEMS.push({ ...it, sec: si })));
+  const COMPILED = ITEMS.map(compile);
+  const SEC_INDEX = Object.fromEntries(SECTIONS.map((s, i) => [s.id, i]));
   let rec = null;
-  let wantListening = false;   // the drill wants the mic on
+  let wantListening = false;
   let restartTimer = null;
   let idx = 0;
-  let finalText = '';          // committed transcript for this slide
+  let finalText = '';
   let interimText = '';
-  let hits = [];               // per item: true once heard
-  let graded = false;
+  let hits = ITEMS.map(() => false);
+  let priority = new Set();
   let listShown = false;
-  const results = [];          // per slide: { hits, total, missed: [] }
-  let compiled = [];
 
   // ---------- microphone ----------
   function setMic(state, text) {
-    const m = $('mic');
-    m.className = 'mic ' + state;
+    $('mic').className = 'mic ' + state;
     $('mic-txt').textContent = text;
   }
   function buildRecognizer() {
@@ -690,7 +783,6 @@
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const res = e.results[i];
         if (res.isFinal) {
-          // keep every alternative for matching; show the best one
           finalText += ' ' + res[0].transcript;
           for (let k = 0; k < res.length; k++) score(res[k].transcript);
         } else {
@@ -708,11 +800,9 @@
       } else if (e.error === 'network') {
         setMic('blocked', 'No network for speech. Tap Restart mic.');
       }
-      // 'no-speech' and 'aborted' fall through to onend, which restarts
     };
     r.onend = () => {
-      if (!wantListening) { setMic('', graded ? 'Microphone paused. Next restarts it.' : 'Microphone off'); return; }
-      // phones stop after a pause; bring it straight back
+      if (!wantListening) { setMic('', 'Microphone off'); return; }
       setMic('', 'Reconnecting…');
       clearTimeout(restartTimer);
       restartTimer = setTimeout(startRec, 250);
@@ -731,7 +821,6 @@
   }
   function listen() {
     wantListening = true;
-    // a fresh recognizer each slide keeps the transcript clean
     if (rec) { try { rec.abort(); } catch (e) {} rec = null; }
     startRec();
   }
@@ -742,138 +831,113 @@
 
   // ---------- scoring ----------
   function score(text) {
-    if (graded) return;
-    const cur = CHECKS[idx];
-    for (const i of match(cur.items, compiled, words(text), hits)) {
+    for (const i of match(ITEMS, COMPILED, words(text), hits, priority)) {
       hits[i] = true;
-      $('last').innerHTML = 'Heard <b>' + esc(cur.items[i].label) + '</b>';
-      markItem(i);
+      $('last').innerHTML = 'Heard <b>' + esc(ITEMS[i].label) + '</b>';
     }
-    $('hits').textContent = hits.filter(Boolean).length;
+    renderCounts();
   }
   function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   function renderHeard() {
     $('heard').innerHTML = esc(finalText.trim()) + (interimText.trim() ? ' <span class="interim">' + esc(interimText.trim()) + '</span>' : '');
     $('heard').scrollTop = $('heard').scrollHeight;
   }
-  function markItem(i) {
-    const li = $('items').children[i];
-    if (!li) return;
-    li.classList.add('hit');
-    li.querySelector('i').textContent = '✓';
+  function sectionScore(si) {
+    let got = 0, total = 0;
+    ITEMS.forEach((it, i) => { if (it.sec === si) { total++; if (hits[i]) got++; } });
+    return { got, total };
+  }
+  function renderCounts() {
+    // the peek list: this photo's sections, with live ticks
+    $('items').innerHTML = SLIDES[idx].sections.map(id => {
+      const si = SEC_INDEX[id], s = sectionScore(si);
+      return '<h4>' + esc(SECTIONS[si].title) + '<span>' + s.got + '/' + s.total + '</span></h4><ul class="items">'
+        + ITEMS.map((it, n) => it.sec === si
+          ? '<li class="' + (hits[n] ? 'hit' : '') + '"><i>' + (hits[n] ? '✓' : '') + '</i><span>' + esc(it.label) + '</span></li>' : '').join('')
+        + '</ul>';
+    }).join('');
+    $('hits').textContent = hits.filter(Boolean).length;
+    $('total').textContent = ITEMS.length;
+    $('chips').innerHTML = SLIDES[idx].sections.map(id => {
+      const si = SEC_INDEX[id], s = sectionScore(si);
+      return '<span class="chip' + (s.got === s.total ? ' full' : '') + '">' + esc(SECTIONS[si].title) + ' <b>' + s.got + '/' + s.total + '</b></span>';
+    }).join('');
   }
 
-  // ---------- slides ----------
+  // ---------- photos ----------
   function show(i) {
     idx = i;
-    const cur = CHECKS[idx];
-    compiled = cur.items.map(compile);
-    hits = cur.items.map(() => false);
-    finalText = ''; interimText = ''; graded = false; listShown = false;
+    const cur = SLIDES[idx];
+    priority = new Set();
+    ITEMS.forEach((it, n) => { if (cur.sections.includes(SECTIONS[it.sec].id)) priority.add(n); });
 
-    if (cur.image) {
-      $('photo').src = cur.image; $('photo').alt = cur.title;
-      $('photo').hidden = false; $('nophoto').hidden = true;
-    } else {
-      $('photo').removeAttribute('src'); $('photo').hidden = true;
-      $('nophoto').hidden = false;
-      $('nophoto').innerHTML = esc(cur.title) + '<small>Photo coming</small>';
-    }
+    $('photo').src = cur.image; $('photo').alt = cur.title;
     $('cap').innerHTML = esc(cur.title) + (cur.sub ? '<small>' + esc(cur.sub) + '</small>' : '');
     $('jump').value = String(idx);
-    $('panel-sub').textContent = cur.items.length + ' items. Say them in any order.';
-    $('total').textContent = cur.items.length;
-    $('hits').textContent = '0';
-    $('last').textContent = '';
-    $('heard').textContent = '';
-    $('verdict').className = 'verdict';
 
-    const ul = $('items');
-    ul.innerHTML = cur.items.map((it, n) => '<li><i></i><span><span class="num">' + (n + 1) + '</span>' + esc(it.label) + '</span></li>').join('');
-    ul.hidden = true;
-    $('hidden-note').hidden = false;
-    $('peek').textContent = 'Show the list';
-    $('done').disabled = false;
+    renderCounts();
 
-    // progress
-    $('progress').innerHTML = '<span>Check ' + (idx + 1) + ' of ' + CHECKS.length + '</span><small>' + esc(cur.title) + '</small>'
-      + '<span class="dots">' + CHECKS.map((_, n) => '<i class="' + (n < idx ? 'done' : n === idx ? 'now' : '') + '"></i>').join('') + '</span>';
+    $('progress').innerHTML = '<span>Photo ' + (idx + 1) + ' of ' + SLIDES.length + '</span><small>' + esc(cur.title) + '</small>'
+      + '<span class="dots">' + SLIDES.map((_, n) => '<i class="' + (n < idx ? 'done' : n === idx ? 'now' : '') + '"></i>').join('') + '</span>';
 
-    // nav
-    const prev = CHECKS[idx - 1], next = CHECKS[idx + 1];
+    const prev = SLIDES[idx - 1], next = SLIDES[idx + 1];
     $('prev').disabled = !prev;
-    $('prev-sub').textContent = prev ? prev.title : 'First check';
-    $('next-title').textContent = next ? 'Next' : 'Finish';
-    $('next-sub').textContent = next ? next.title : 'See the summary';
-
-    listen();
-  }
-
-  function grade() {
-    if (graded) return;
-    graded = true;
-    const cur = CHECKS[idx];
-    const missed = cur.items.filter((_, i) => !hits[i]).map(it => it.label);
-    const got = hits.filter(Boolean).length;
-    results[idx] = { hits: got, total: cur.items.length, missed };
-
-    const ul = $('items');
-    ul.hidden = false; $('hidden-note').hidden = true; listShown = true;
-    $('peek').textContent = 'Hide the list';
-    cur.items.forEach((_, i) => {
-      const li = ul.children[i];
-      if (!hits[i]) { li.classList.add('miss'); li.querySelector('i').textContent = '✕'; }
-    });
-
-    const v = $('verdict');
-    if (!missed.length) {
-      v.className = 'verdict show good';
-      v.innerHTML = 'All ' + cur.items.length + ' called out<small>Nothing missed. Tap Next.</small>';
-    } else {
-      v.className = 'verdict show ' + (got >= cur.items.length * .7 ? 'mid' : 'bad');
-      v.innerHTML = 'Missed ' + missed.length + ' of ' + cur.items.length + '<small>' + esc(missed.join(' · ')) + '</small>';
-    }
-    $('done').disabled = true;
-    stopRec();
-  }
-
-  function showSummary() {
-    stopRec();
-    drill.hidden = true; finish.hidden = false;
-    $('summary').innerHTML = CHECKS.map((c, i) => {
-      const r = results[i];
-      if (!r) return '<div class="card"><b>' + esc(c.title) + '</b><small>Skipped</small><span class="score">–</span></div>';
-      const ok = r.missed.length === 0;
-      return '<div class="card"><b>' + esc(c.title) + '</b><small>' + (ok ? 'Nothing missed' : 'Missed ' + r.missed.length) + '</small>'
-        + '<span class="score ' + (ok ? 'good' : 'bad') + '">' + r.hits + '/' + r.total + '</span>'
-        + (ok ? '' : '<div class="missed">' + esc(r.missed.join(' · ')) + '</div>') + '</div>';
-    }).join('');
+    $('prev-sub').textContent = prev ? prev.title : 'First photo';
+    $('next-title').textContent = next ? 'Next' : 'Complete';
+    $('next-sub').textContent = next ? next.title : 'Answer sheet';
     window.scrollTo({ top: 0 });
   }
 
+  // ---------- answer sheet ----------
+  function complete() {
+    stopRec();
+    drill.hidden = true; finish.hidden = false;
+    const got = hits.filter(Boolean).length, total = ITEMS.length, missed = total - got;
+    const pct = Math.round(100 * got / total);
+    const sc = $('score');
+    sc.className = 'score ' + (missed === 0 ? 'good' : pct >= 80 ? 'mid' : 'bad');
+    sc.innerHTML = '<div class="big">' + got + '/' + total + '</div><b>' + (missed === 0 ? 'Nothing missed' : 'Missed ' + missed) + '</b><small>' + pct + '% of the operational check called out</small>';
+    $('sheet').innerHTML = SECTIONS.map((s, si) => {
+      const r = sectionScore(si);
+      return '<div class="sec' + (r.got === r.total ? ' clean' : '') + '"><h3>' + esc(s.title) + '<span class="' + (r.got === r.total ? 'good' : 'bad') + '">' + r.got + '/' + r.total + '</span></h3><ul>'
+        + ITEMS.map((it, n) => it.sec === si ? '<li class="' + (hits[n] ? 'hit' : 'miss') + '"><i>' + (hits[n] ? '✓' : '✕') + '</i><span>' + esc(it.label) + '</span></li>' : '').join('')
+        + '</ul></div>';
+    }).join('');
+    window.scrollTo({ top: 0 });
+  }
+  function reset() {
+    hits = ITEMS.map(() => false);
+    finalText = ''; interimText = '';
+    $('heard').textContent = ''; $('last').textContent = '';
+    $('missed-only').setAttribute('aria-pressed', 'false'); $('sheet').classList.remove('missed-only');
+  }
+
   // ---------- wiring ----------
+  $('jump').innerHTML = SLIDES.map((c, n) => '<option value="' + n + '">' + (n + 1) + '. ' + esc(c.title) + '</option>').join('');
+  $('jump').addEventListener('change', () => show(Number($('jump').value)));
   $('enable').addEventListener('click', () => {
     if (!SR) { $('gate-err').hidden = false; $('gate-err').textContent = 'This browser cannot do speech recognition. Use Chrome on Android or Safari on iPhone.'; return; }
     gate.hidden = true; drill.hidden = false;
-    results.length = 0;
-    show(0);   // rec.start() from this tap is what makes the phone ask for the microphone
+    reset(); show(0);
+    listen();   // rec.start() from this tap is what makes the phone ask for the microphone
   });
-  $('jump').innerHTML = CHECKS.map((c, n) => '<option value="' + n + '">' + (n + 1) + '. ' + esc(c.title) + '</option>').join('');
-  $('jump').addEventListener('change', () => { if (!graded) grade(); show(Number($('jump').value)); });
-  $('restart').addEventListener('click', () => { if (!graded) listen(); });
-  $('done').addEventListener('click', grade);
+  $('restart').addEventListener('click', listen);
   $('peek').addEventListener('click', () => {
     listShown = !listShown;
     $('items').hidden = !listShown;
     $('hidden-note').hidden = listShown;
     $('peek').textContent = listShown ? 'Hide the list' : 'Show the list';
   });
-  $('next').addEventListener('click', () => {
-    if (!graded) grade();
-    if (idx + 1 < CHECKS.length) show(idx + 1); else showSummary();
-  });
+  $('next').addEventListener('click', () => { if (idx + 1 < SLIDES.length) show(idx + 1); else complete(); });
   $('prev').addEventListener('click', () => { if (idx > 0) show(idx - 1); });
-  $('again').addEventListener('click', () => { finish.hidden = true; drill.hidden = false; results.length = 0; show(0); });
+  $('complete').addEventListener('click', complete);
+  $('back').addEventListener('click', () => { finish.hidden = true; drill.hidden = false; show(idx); listen(); });
+  $('again').addEventListener('click', () => { finish.hidden = true; drill.hidden = false; reset(); show(0); listen(); });
+  $('missed-only').addEventListener('click', () => {
+    const on = $('missed-only').getAttribute('aria-pressed') !== 'true';
+    $('missed-only').setAttribute('aria-pressed', String(on));
+    $('sheet').classList.toggle('missed-only', on);
+  });
 
   if (!SR) { $('unsupported').hidden = false; $('enable').disabled = true; }
 </script>
